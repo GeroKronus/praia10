@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoDenuncia {
+  SOM_ALTO
+  DROGAS
+  ANIMAIS
+  LIXO
+  AMBULANTE_IRREGULAR
+  OUTROS
+}
+
+model Denuncia {
+  id        String        @id @default(uuid())
+  tipo      TipoDenuncia
+  descricao String?
+  latitude  Float
+  longitude Float
+  criadoEm  DateTime      @default(now())
+
+  @@map("denuncias")
+}
