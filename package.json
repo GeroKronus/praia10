@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "build": "prisma db push && next build",
-    "start": "node server.js",
+    "build": "next build",
+    "start": "prisma db push && node server.js",
     "lint": "next lint",
     "postinstall": "prisma generate"
   },
