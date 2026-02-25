@@ -20,11 +20,11 @@ export default function Home() {
   return (
     <main className="w-full h-screen">
       {/* Header */}
-      <div className="absolute top-4 left-4 z-[500] bg-white rounded-lg shadow-lg px-4 py-2 flex items-center gap-2">
-        <span className="text-xl">🏖️</span>
+      <div className="absolute top-4 left-4 z-[500] bg-white/95 backdrop-blur rounded-xl shadow-md px-3 py-1.5 flex items-center gap-1.5">
+        <span className="text-lg">🏖️</span>
         <div>
-          <h1 className="text-sm font-bold text-gray-800 leading-tight">Praia10</h1>
-          <p className="text-[10px] text-gray-500 leading-tight">Praia do Morro - Guarapari</p>
+          <h1 className="text-xs font-bold text-gray-800 leading-tight">Praia10</h1>
+          <p className="text-[9px] text-gray-400 leading-tight">Praia do Morro - Guarapari</p>
         </div>
       </div>
 

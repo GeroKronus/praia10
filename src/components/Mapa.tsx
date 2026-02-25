@@ -491,8 +491,8 @@ export default function Mapa() {
         <FlyToHandler target={flyToTarget} />
       </MapContainer>
 
-      {/* Contador de denúncias + toggle heatmap */}
-      <div className="absolute top-4 right-4 z-[500] flex items-center gap-2">
+      {/* Toggle heatmap */}
+      <div className="absolute top-4 right-4 z-[500]">
         <button
           onClick={() => setMostrarHeatmap(!mostrarHeatmap)}
           className={`rounded-lg shadow-lg px-3 py-2 text-xs font-semibold transition-colors ${
@@ -503,11 +503,6 @@ export default function Mapa() {
         >
           🔥 {mostrarHeatmap ? 'Marcadores' : 'Heatmap'}
         </button>
-        <div className="bg-white rounded-lg shadow-lg px-4 py-2">
-          <span className="text-sm font-medium text-gray-600">
-            {denuncias.length} denúncia{denuncias.length !== 1 ? 's' : ''}
-          </span>
-        </div>
       </div>
 
       {/* Timeline */}
@@ -518,9 +513,9 @@ export default function Mapa() {
 
       {/* Instrução */}
       {!formAberto && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] bg-white/90 backdrop-blur rounded-full shadow-lg px-6 py-3 pointer-events-none">
-          <span className="text-sm font-medium text-gray-600">
-            Toque no mapa para fazer uma denúncia
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] bg-white/90 backdrop-blur rounded-full shadow-md px-5 py-2.5 pointer-events-none">
+          <span className="text-xs font-semibold text-gray-500">
+            Toque e denuncie
           </span>
         </div>
       )}
