@@ -117,7 +117,7 @@ function BotaoLocalizacao({ onCentralizar }: { onCentralizar: () => void }) {
   return (
     <button
       onClick={onCentralizar}
-      className="absolute top-32 right-4 z-[500] w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-lg cursor-pointer"
+      className="absolute top-16 right-3 z-[500] w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-lg cursor-pointer"
       title="Minha localizacao"
     >
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -354,8 +354,13 @@ export default function Mapa() {
   const [mostrarHeatmap, setMostrarHeatmap] = useState(false)
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null)
   const [ultimaDenuncia, setUltimaDenuncia] = useState<Denuncia | null>(null)
+  const [painelAberto, setPainelAberto] = useState<'utilidades' | 'feed' | 'setores' | null>(null)
 
   const { fotoUrl, carregandoFoto, fecharFoto } = useFotoModal(FOTO_ENDPOINTS)
+
+  const togglePainel = useCallback((painel: 'utilidades' | 'feed' | 'setores') => {
+    setPainelAberto((p) => (p === painel ? null : painel))
+  }, [])
 
   // Toast de notificacoes
   useToastNotificacao(ultimaDenuncia)
@@ -450,6 +455,7 @@ export default function Mapa() {
   }, [])
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
+    setPainelAberto(null)
     setPontoClicado({ lat, lng })
     setFormAberto(true)
   }, [])
@@ -557,28 +563,81 @@ export default function Mapa() {
         )
       }} />
 
-      {/* Toggle heatmap */}
-      <div className="absolute top-4 right-4 z-[500]">
-        <button
-          onClick={() => setMostrarHeatmap(!mostrarHeatmap)}
-          className={`rounded-lg shadow-lg px-3 py-2 text-xs font-semibold transition-colors ${
-            mostrarHeatmap
-              ? 'bg-orange-500 text-white'
-              : 'bg-white text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          🔥 {mostrarHeatmap ? 'Marcadores' : 'Heatmap'}
-        </button>
+      {/* Overlay para fechar painel ao clicar fora */}
+      {painelAberto && (
+        <div className="fixed inset-0 z-[499]" onClick={() => setPainelAberto(null)} />
+      )}
+
+      {/* Toolbar unificada */}
+      <div className="absolute top-3 left-3 right-3 z-[500] pointer-events-none">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-1 gap-0.5 pointer-events-auto">
+            <button
+              onClick={() => togglePainel('utilidades')}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                painelAberto === 'utilidades' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <span>📍</span>
+              <span>Util</span>
+              {pois.length > 0 && (
+                <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {pois.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => togglePainel('feed')}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                painelAberto === 'feed' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <span>📋</span>
+              <span>Feed</span>
+              {denuncias.length > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {denuncias.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => togglePainel('setores')}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                painelAberto === 'setores' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <span>📊</span>
+              <span>Setores</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => setMostrarHeatmap(!mostrarHeatmap)}
+            className={`ml-auto rounded-xl shadow-lg px-2.5 py-2 text-xs font-semibold transition-colors pointer-events-auto ${
+              mostrarHeatmap
+                ? 'bg-orange-500 text-white'
+                : 'bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-white'
+            }`}
+          >
+            🔥
+          </button>
+        </div>
+
+        {/* Painel aberto */}
+        {painelAberto && (
+          <div className="mt-2 pointer-events-auto">
+            {painelAberto === 'utilidades' && (
+              <FeedPOIs pois={pois} onFlyTo={handleFlyTo} onClose={() => setPainelAberto(null)} />
+            )}
+            {painelAberto === 'feed' && (
+              <TimelineFeed denuncias={denuncias} onFlyTo={handleFlyTo} onClose={() => setPainelAberto(null)} />
+            )}
+            {painelAberto === 'setores' && (
+              <PainelSetores denuncias={denuncias} />
+            )}
+          </div>
+        )}
       </div>
-
-      {/* Feed POIs */}
-      <FeedPOIs pois={pois} onFlyTo={handleFlyTo} />
-
-      {/* Timeline */}
-      <TimelineFeed denuncias={denuncias} onFlyTo={handleFlyTo} />
-
-      {/* Setores */}
-      <PainelSetores denuncias={denuncias} />
 
       {/* Instrucao */}
       {!formAberto && (
