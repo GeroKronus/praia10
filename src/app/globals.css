@@ -9,17 +9,21 @@
 }
 
 html, body {
-  height: 100%;
   width: 100%;
 }
 
-/* Mapa precisa de overflow hidden, dashboard precisa de scroll */
-body:has(.dashboard-page) {
-  overflow: auto;
+/* Mapa (default): tela cheia sem scroll */
+html, body {
+  height: 100%;
+  overflow: hidden;
 }
 
-body:not(:has(.dashboard-page)) {
-  overflow: hidden;
+/* Dashboard: libera scroll e height auto */
+html:has(.dashboard-page),
+html:has(.dashboard-page) body {
+  height: auto;
+  overflow: auto;
+  overflow-x: hidden;
 }
 
 /* Leaflet overrides */

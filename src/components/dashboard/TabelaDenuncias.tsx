@@ -29,19 +29,25 @@ export default function TabelaDenuncias({ senha }: TabelaDenunciasProps) {
   const [resolvendo, setResolvendo] = useState<string | null>(null)
 
   const buscar = useCallback(async () => {
+    console.log('[TabelaDenuncias] Buscando página', page)
     setCarregando(true)
     try {
       const res = await fetch(`/api/dashboard/denuncias?page=${page}&limit=20`, {
         headers: { 'x-admin-password': senha },
       })
+      console.log('[TabelaDenuncias] Response status:', res.status)
       if (res.ok) {
         const data = await res.json()
+        console.log('[TabelaDenuncias] Dados recebidos:', data.total, 'denúncias, página', data.page, 'de', data.totalPages)
         setDenuncias(data.denuncias)
         setTotalPages(data.totalPages)
         setTotal(data.total)
+      } else {
+        const errText = await res.text()
+        console.error('[TabelaDenuncias] Erro API:', res.status, errText)
       }
     } catch (err) {
-      console.error('Erro ao buscar denúncias:', err)
+      console.error('[TabelaDenuncias] Erro fetch:', err)
     } finally {
       setCarregando(false)
     }

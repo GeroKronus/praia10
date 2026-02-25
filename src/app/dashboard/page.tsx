@@ -42,6 +42,33 @@ export default function DashboardPage() {
     }
   }, [senha, buscarStats])
 
+  // Debug: verificar overflow no F12
+  useEffect(() => {
+    if (senha) {
+      const html = document.documentElement
+      const body = document.body
+      console.log('[Dashboard Debug] html overflow:', getComputedStyle(html).overflow)
+      console.log('[Dashboard Debug] body overflow:', getComputedStyle(body).overflow)
+      console.log('[Dashboard Debug] html height:', getComputedStyle(html).height)
+      console.log('[Dashboard Debug] body height:', getComputedStyle(body).height)
+      console.log('[Dashboard Debug] .dashboard-page exists:', !!document.querySelector('.dashboard-page'))
+
+      // Forçar overflow auto como fallback
+      html.style.overflow = 'auto'
+      html.style.height = 'auto'
+      body.style.overflow = 'auto'
+      body.style.height = 'auto'
+      console.log('[Dashboard Debug] overflow forçado para auto')
+
+      return () => {
+        html.style.overflow = ''
+        html.style.height = ''
+        body.style.overflow = ''
+        body.style.height = ''
+      }
+    }
+  }, [senha])
+
   if (!senha) {
     return <LoginGate onLogin={setSenha} />
   }
