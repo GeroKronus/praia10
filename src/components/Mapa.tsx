@@ -43,8 +43,6 @@ function UserLocation() {
   const map = useMap()
   const markerRef = useRef<L.CircleMarker | null>(null)
   const circleRef = useRef<L.Circle | null>(null)
-  const centeredRef = useRef(false)
-
   useEffect(() => {
     if (!navigator.geolocation) return
 
@@ -52,12 +50,6 @@ function UserLocation() {
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords
         const latlng: L.LatLngExpression = [latitude, longitude]
-
-        // Centralizar no usuário na primeira localização obtida
-        if (!centeredRef.current) {
-          map.flyTo(latlng, 17)
-          centeredRef.current = true
-        }
 
         if (markerRef.current) {
           markerRef.current.setLatLng(latlng)
