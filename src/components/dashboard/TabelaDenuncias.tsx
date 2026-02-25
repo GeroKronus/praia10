@@ -27,6 +27,7 @@ export default function TabelaDenuncias({ senha }: TabelaDenunciasProps) {
   const [total, setTotal] = useState(0)
   const [carregando, setCarregando] = useState(true)
   const [resolvendo, setResolvendo] = useState<string | null>(null)
+  const [excluindo, setExcluindo] = useState<string | null>(null)
 
   const buscar = useCallback(async () => {
     console.log('[TabelaDenuncias] Buscando página', page)
@@ -56,6 +57,25 @@ export default function TabelaDenuncias({ senha }: TabelaDenunciasProps) {
   useEffect(() => {
     buscar()
   }, [buscar])
+
+  const excluir = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta denúncia?')) return
+    setExcluindo(id)
+    try {
+      const res = await fetch(`/api/denuncias?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-password': senha },
+      })
+      if (res.ok) {
+        setDenuncias((prev) => prev.filter((d) => d.id !== id))
+        setTotal((t) => t - 1)
+      }
+    } catch (err) {
+      console.error('Erro ao excluir:', err)
+    } finally {
+      setExcluindo(null)
+    }
+  }
 
   const resolver = async (id: string) => {
     setResolvendo(id)
@@ -144,15 +164,24 @@ export default function TabelaDenuncias({ senha }: TabelaDenunciasProps) {
                         )}
                       </td>
                       <td className="py-3">
-                        {!resolvido && (
+                        <div className="flex gap-1">
+                          {!resolvido && (
+                            <button
+                              onClick={() => resolver(d.id)}
+                              disabled={resolvendo === d.id}
+                              className="px-3 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                            >
+                              {resolvendo === d.id ? '...' : 'Resolver'}
+                            </button>
+                          )}
                           <button
-                            onClick={() => resolver(d.id)}
-                            disabled={resolvendo === d.id}
-                            className="px-3 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                            onClick={() => excluir(d.id)}
+                            disabled={excluindo === d.id}
+                            className="px-3 py-1 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                           >
-                            {resolvendo === d.id ? '...' : 'Resolver'}
+                            {excluindo === d.id ? '...' : 'Excluir'}
                           </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   )

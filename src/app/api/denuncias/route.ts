@@ -4,6 +4,7 @@ import { TipoDenuncia } from '@prisma/client'
 import { emitSocket } from '@/lib/socketEmitter'
 import { buscarFoto, adicionarTemFoto, semFoto } from '@/lib/fotoQuery'
 import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, TIPOS_EXPIRACAO_LONGA } from '@/lib/constants'
+import { verificarAdmin } from '@/lib/auth-dashboard'
 
 export async function GET(request: Request) {
   try {
@@ -85,8 +86,13 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     const sessionId = searchParams.get('sessionId')
+    const isAdmin = !verificarAdmin(request)
 
-    if (!id || !sessionId) {
+    if (!id) {
+      return NextResponse.json({ error: 'Campo obrigatorio: id' }, { status: 400 })
+    }
+
+    if (!isAdmin && !sessionId) {
       return NextResponse.json({ error: 'Campos obrigatorios: id, sessionId' }, { status: 400 })
     }
 
@@ -96,7 +102,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Denuncia nao encontrada' }, { status: 404 })
     }
 
-    if (denuncia.sessionId !== sessionId) {
+    if (!isAdmin && denuncia.sessionId !== sessionId) {
       return NextResponse.json({ error: 'Sem permissao para remover esta denuncia' }, { status: 403 })
     }
 
