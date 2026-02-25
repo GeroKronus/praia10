@@ -667,7 +667,7 @@ export default function Mapa() {
       {!formAberto && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[9999] bg-white/95 backdrop-blur rounded-full shadow-lg px-5 py-2.5 pointer-events-none" style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
           <span className="text-xs font-semibold text-gray-600">
-            Toque no mapa e denuncie
+            Toque e denuncie
           </span>
         </div>
       )}
