@@ -15,6 +15,7 @@ import FormDenuncia from './FormDenuncia'
 import HeatmapLayer from './HeatmapLayer'
 import PainelSetores from './PainelSetores'
 import TimelineFeed from './TimelineFeed'
+import FeedPOIs from './FeedPOIs'
 import { ToastProvider, useToastNotificacao } from './ToastNotificacao'
 import { getSocket } from '@/lib/socket'
 
@@ -580,6 +581,9 @@ export default function Mapa() {
           🔥 {mostrarHeatmap ? 'Marcadores' : 'Heatmap'}
         </button>
       </div>
+
+      {/* Feed POIs */}
+      <FeedPOIs pois={pois} onFlyTo={handleFlyTo} />
 
       {/* Timeline */}
       <TimelineFeed denuncias={denuncias} onFlyTo={handleFlyTo} />
