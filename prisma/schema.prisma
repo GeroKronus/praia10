@@ -22,6 +22,8 @@ model Denuncia {
   descricao String?
   latitude  Float
   longitude Float
+  sessionId String
+  ativa     Boolean       @default(true)
   criadoEm  DateTime      @default(now())
 
   @@map("denuncias")

@@ -18,11 +18,17 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
   const handleSubmit = async () => {
     if (!tipo) return
     setEnviando(true)
+    let sessionId = sessionStorage.getItem('praia10_session')
+    if (!sessionId) {
+      sessionId = crypto.randomUUID()
+      sessionStorage.setItem('praia10_session', sessionId)
+    }
     onSubmit({
       tipo,
       descricao: descricao.trim() || undefined,
       latitude,
       longitude,
+      sessionId,
     })
   }
 

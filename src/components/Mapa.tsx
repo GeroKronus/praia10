@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -15,6 +15,24 @@ import { getSocket } from '@/lib/socket'
 
 const CENTRO_PRAIA_MORRO: L.LatLngExpression = [-20.6478, -40.4928]
 const ZOOM_INICIAL = 16
+const EXPIRACAO_MS = 5 * 60 * 1000
+
+function getSessionId(): string {
+  let id = sessionStorage.getItem('praia10_session')
+  if (!id) {
+    id = crypto.randomUUID()
+    sessionStorage.setItem('praia10_session', id)
+  }
+  return id
+}
+
+function tempoRestante(criadoEm: string): string {
+  const diff = EXPIRACAO_MS - (Date.now() - new Date(criadoEm).getTime())
+  if (diff <= 0) return 'Expirando...'
+  const min = Math.floor(diff / 60000)
+  const seg = Math.floor((diff % 60000) / 1000)
+  return `${min}:${seg.toString().padStart(2, '0')}`
+}
 
 // Componente para capturar cliques no mapa
 function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void }) {
@@ -27,8 +45,15 @@ function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void
 }
 
 // Componente para MarkerCluster
-function MarkerClusterGroup({ denuncias }: { denuncias: Denuncia[] }) {
+function MarkerClusterGroup({
+  denuncias,
+  onRemover,
+}: {
+  denuncias: Denuncia[]
+  onRemover: (id: string) => void
+}) {
   const map = useMap()
+  const sessionId = useRef(getSessionId())
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -68,13 +93,36 @@ function MarkerClusterGroup({ denuncias }: { denuncias: Denuncia[] }) {
 
       const config = TIPO_CONFIG[d.tipo as TipoDenuncia]
       const data = new Date(d.criadoEm).toLocaleString('pt-BR')
+      const ehMinha = d.sessionId === sessionId.current
+      const tempo = tempoRestante(d.criadoEm)
+
       marker.bindPopup(`
-        <div style="min-width: 180px;">
+        <div style="min-width: 200px;">
           <div style="font-size: 14px; font-weight: bold; margin-bottom: 4px;">
             ${config.emoji} ${config.label}
           </div>
           ${d.descricao ? `<p style="font-size: 13px; color: #555; margin: 4px 0;">${d.descricao}</p>` : ''}
-          <p style="font-size: 11px; color: #999; margin-top: 6px;">📅 ${data}</p>
+          <p style="font-size: 11px; color: #999; margin-top: 6px;">
+            📅 ${data}
+          </p>
+          <p style="font-size: 11px; color: #e67e22; margin-top: 2px;">
+            ⏱️ Expira em ${tempo}
+          </p>
+          ${ehMinha ? `<button
+            onclick="window.__removerDenuncia__('${d.id}')"
+            style="
+              margin-top: 8px;
+              width: 100%;
+              padding: 6px;
+              background: #e74c3c;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 13px;
+              font-weight: bold;
+              cursor: pointer;
+            "
+          >Remover denúncia</button>` : ''}
         </div>
       `)
 
@@ -87,6 +135,18 @@ function MarkerClusterGroup({ denuncias }: { denuncias: Denuncia[] }) {
       map.removeLayer(cluster)
     }
   }, [denuncias, map])
+
+  // Expor função global para o botão no popup
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__removerDenuncia__ = (id: string) => {
+      onRemover(id)
+    }
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).__removerDenuncia__
+    }
+  }, [onRemover])
 
   return null
 }
@@ -118,16 +178,31 @@ export default function Mapa() {
 
     socket.on('nova-denuncia', (denuncia: Denuncia) => {
       setDenuncias((prev) => {
-        // Evitar duplicatas
         if (prev.some((d) => d.id === denuncia.id)) return prev
         return [denuncia, ...prev]
       })
     })
 
+    socket.on('denuncia-removida', ({ id }: { id: string }) => {
+      setDenuncias((prev) => prev.filter((d) => d.id !== id))
+    })
+
     return () => {
       socket.off('connect')
       socket.off('nova-denuncia')
+      socket.off('denuncia-removida')
     }
+  }, [])
+
+  // Timer local para remover denúncias expiradas do estado e forçar re-render dos tempos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDenuncias((prev) => {
+        const agora = Date.now()
+        return prev.filter((d) => agora - new Date(d.criadoEm).getTime() < EXPIRACAO_MS)
+      })
+    }, 10000)
+    return () => clearInterval(interval)
   }, [])
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
@@ -153,6 +228,21 @@ export default function Mapa() {
     }
   }
 
+  const handleRemover = useCallback(async (id: string) => {
+    const sessionId = getSessionId()
+    try {
+      const res = await fetch(`/api/denuncias?id=${id}&sessionId=${sessionId}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        // Remoção otimista local (socket também vai notificar)
+        setDenuncias((prev) => prev.filter((d) => d.id !== id))
+      }
+    } catch (error) {
+      console.error('Erro ao remover denúncia:', error)
+    }
+  }, [])
+
   const handleClose = () => {
     setFormAberto(false)
     setPontoClicado(null)
@@ -177,7 +267,7 @@ export default function Mapa() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ClickHandler onClick={handleMapClick} />
-        <MarkerClusterGroup denuncias={denuncias} />
+        <MarkerClusterGroup denuncias={denuncias} onRemover={handleRemover} />
       </MapContainer>
 
       {/* Contador de denúncias */}

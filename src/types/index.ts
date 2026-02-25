@@ -13,6 +13,7 @@ export interface Denuncia {
   descricao: string | null
   latitude: number
   longitude: number
+  sessionId: string
   criadoEm: string
 }
 
@@ -21,6 +22,7 @@ export interface NovaDenuncia {
   descricao?: string
   latitude: number
   longitude: number
+  sessionId: string
 }
 
 export const TIPO_CONFIG: Record<TipoDenuncia, { label: string; emoji: string; cor: string }> = {
