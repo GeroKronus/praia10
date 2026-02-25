@@ -56,6 +56,21 @@ export async function GET() {
       .sort((a, b) => b.total - a.total)
       .slice(0, 20)
 
+    // Garantir que holders de avatar especial apareçam mesmo com 0 atividade
+    avatarEspeciais.forEach((a) => {
+      const avatar = SPECIAL_AVATARS[a.chave]
+      if (avatar && !ranking.some((r) => r.visitorId === a.visitorId)) {
+        ranking.push({
+          visitorId: a.visitorId,
+          avatar: avatar.emoji,
+          titulo: avatar.titulo,
+          denuncias: 0,
+          confirmacoes: 0,
+          total: 0,
+        })
+      }
+    })
+
     return NextResponse.json(ranking)
   } catch (error) {
     console.error('Erro ao buscar ranking:', error)

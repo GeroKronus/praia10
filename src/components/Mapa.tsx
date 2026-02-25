@@ -492,6 +492,18 @@ export default function Mapa() {
     }
   }, [fetchAvatarStatus])
 
+  // Mesclar avatar especial do usuario atual no avatarMap
+  useEffect(() => {
+    const meuAvatar = avatarClaims.find((a) => a.meu)
+    if (meuAvatar) {
+      setAvatarMap((prev) => {
+        const next = new Map(prev)
+        next.set(getVisitorId(), { emoji: meuAvatar.emoji, titulo: meuAvatar.titulo })
+        return next
+      })
+    }
+  }, [avatarClaims])
+
   // Buscar denuncias existentes
   useEffect(() => {
     fetch('/api/denuncias')
