@@ -20,6 +20,8 @@ import { getSocket } from '@/lib/socket'
 const CENTRO_PRAIA_MORRO: L.LatLngExpression = [-20.6478, -40.4928]
 const ZOOM_INICIAL = 16
 const EXPIRACAO_MS = 10 * 60 * 1000
+const EXPIRACAO_LONGA_MS = 12 * 60 * 60 * 1000
+const TIPOS_EXPIRACAO_LONGA: string[] = ['LIXO', 'OUTROS']
 
 function getSessionId(): string {
   let id = sessionStorage.getItem('praia10_session')
@@ -30,11 +32,14 @@ function getSessionId(): string {
   return id
 }
 
-function tempoRestante(criadoEm: string): string {
-  const diff = EXPIRACAO_MS - (Date.now() - new Date(criadoEm).getTime())
+function tempoRestante(criadoEm: string, tipo: string): string {
+  const expiracao = TIPOS_EXPIRACAO_LONGA.includes(tipo) ? EXPIRACAO_LONGA_MS : EXPIRACAO_MS
+  const diff = expiracao - (Date.now() - new Date(criadoEm).getTime())
   if (diff <= 0) return 'Expirando...'
-  const min = Math.floor(diff / 60000)
+  const horas = Math.floor(diff / 3600000)
+  const min = Math.floor((diff % 3600000) / 60000)
   const seg = Math.floor((diff % 60000) / 1000)
+  if (horas > 0) return `${horas}h${min.toString().padStart(2, '0')}m`
   return `${min}:${seg.toString().padStart(2, '0')}`
 }
 
@@ -194,7 +199,7 @@ function MarkerClusterGroup({
       const config = TIPO_CONFIG[d.tipo as TipoDenuncia]
       const data = new Date(d.criadoEm).toLocaleString('pt-BR')
       const ehMinha = d.sessionId === sessionId.current
-      const tempo = tempoRestante(d.criadoEm)
+      const tempo = tempoRestante(d.criadoEm, d.tipo)
 
       const resolvidoHtml = resolvido
         ? `<div style="
@@ -361,7 +366,10 @@ export default function Mapa() {
     const interval = setInterval(() => {
       setDenuncias((prev) => {
         const agora = Date.now()
-        return prev.filter((d) => agora - new Date(d.criadoEm).getTime() < EXPIRACAO_MS)
+        return prev.filter((d) => {
+          const expiracao = TIPOS_EXPIRACAO_LONGA.includes(d.tipo) ? EXPIRACAO_LONGA_MS : EXPIRACAO_MS
+          return agora - new Date(d.criadoEm).getTime() < expiracao
+        })
       })
     }, 10000)
     return () => clearInterval(interval)

@@ -8,6 +8,8 @@ const dev = process.env.NODE_ENV !== 'production'
 const port = parseInt(process.env.PORT || '3000', 10)
 const hostname = '0.0.0.0'
 const EXPIRACAO_MINUTOS = 10
+const EXPIRACAO_LONGA_MINUTOS = 720 // 12 horas para LIXO e OUTROS
+const TIPOS_EXPIRACAO_LONGA = ['LIXO', 'OUTROS']
 
 const prisma = new PrismaClient()
 const app = next({ dev, hostname, port })
@@ -36,18 +38,27 @@ app.prepare().then(() => {
   // Limpeza automática de denúncias expiradas a cada 30 segundos
   setInterval(async () => {
     try {
-      const limite = new Date(Date.now() - EXPIRACAO_MINUTOS * 60 * 1000)
+      const limiteCurta = new Date(Date.now() - EXPIRACAO_MINUTOS * 60 * 1000)
+      const limiteLonga = new Date(Date.now() - EXPIRACAO_LONGA_MINUTOS * 60 * 1000)
 
-      // Buscar denúncias ativas que expiraram
+      // Buscar denúncias ativas que expiraram (por tipo)
       const expiradas = await prisma.denuncia.findMany({
-        where: { ativa: true, criadoEm: { lt: limite } },
+        where: {
+          ativa: true,
+          OR: [
+            { tipo: { notIn: TIPOS_EXPIRACAO_LONGA }, criadoEm: { lt: limiteCurta } },
+            { tipo: { in: TIPOS_EXPIRACAO_LONGA }, criadoEm: { lt: limiteLonga } },
+          ],
+        },
         select: { id: true },
       })
 
       if (expiradas.length > 0) {
+        const ids = expiradas.map((d) => d.id)
+
         // Soft delete — mantém no banco para contabilização
         await prisma.denuncia.updateMany({
-          where: { ativa: true, criadoEm: { lt: limite } },
+          where: { id: { in: ids } },
           data: { ativa: false },
         })
 
