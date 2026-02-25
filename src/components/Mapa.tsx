@@ -167,6 +167,7 @@ function FlyToHandler({ target }: { target: { lat: number; lng: number } | null 
 }
 
 interface AvatarInfo { emoji: string; titulo: string }
+interface AvatarClaim { chave: string; emoji: string; titulo: string; disponivel: boolean; meu: boolean }
 
 // Componente para MarkerCluster
 function MarkerClusterGroup({
@@ -418,6 +419,9 @@ export default function Mapa() {
   const [painelAberto, setPainelAberto] = useState<'utilidades' | 'feed' | 'setores' | 'ranking' | null>(null)
   const [isDark, setIsDark] = useState(isNightTime)
   const [avatarMap, setAvatarMap] = useState<Map<string, AvatarInfo>>(new Map())
+  const [avatarClaims, setAvatarClaims] = useState<AvatarClaim[]>([])
+  const [mostrarClaimModal, setMostrarClaimModal] = useState(false)
+  const [claimCarregando, setClaimCarregando] = useState(false)
 
   const { fotoUrl, carregandoFoto, fecharFoto } = useFotoModal(FOTO_ENDPOINTS)
 
@@ -449,6 +453,44 @@ export default function Mapa() {
   useEffect(() => {
     registrarVisita()
   }, [])
+
+  // Buscar status de avatares especiais
+  const fetchAvatarStatus = useCallback(() => {
+    const visitorId = getVisitorId()
+    fetch(`/api/avatar/status?visitorId=${visitorId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setAvatarClaims(data)
+      })
+      .catch(console.error)
+  }, [])
+
+  useEffect(() => {
+    fetchAvatarStatus()
+  }, [fetchAvatarStatus])
+
+  const handleClaim = useCallback(async (chave: string) => {
+    setClaimCarregando(true)
+    try {
+      const visitorId = getVisitorId()
+      const res = await fetch('/api/avatar/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chave, visitorId }),
+      })
+      if (res.ok) {
+        setMostrarClaimModal(false)
+        fetchAvatarStatus()
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Erro ao reivindicar')
+      }
+    } catch {
+      alert('Erro ao reivindicar avatar')
+    } finally {
+      setClaimCarregando(false)
+    }
+  }, [fetchAvatarStatus])
 
   // Buscar denuncias existentes
   useEffect(() => {
@@ -781,6 +823,50 @@ export default function Mapa() {
           </div>
         )}
       </div>
+
+      {/* Icone de avatar especial disponivel */}
+      {avatarClaims.some((a) => a.disponivel) && !avatarClaims.some((a) => a.meu) && (
+        <button
+          onClick={() => setMostrarClaimModal(true)}
+          className="absolute bottom-28 right-3 z-[500] w-12 h-12 flex items-center justify-center bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full shadow-lg cursor-pointer animate-bounce"
+          title="Avatar especial disponível!"
+          style={{ animationDuration: '2s' }}
+        >
+          <span className="text-xl">✨</span>
+        </button>
+      )}
+
+      {/* Modal de claim de avatar */}
+      {mostrarClaimModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50" onClick={() => setMostrarClaimModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-5 mx-4 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-center mb-1">✨ Avatares Especiais</h3>
+            <p className="text-xs text-gray-500 text-center mb-4">Escolha um avatar único — só o primeiro a reivindicar fica com ele!</p>
+            <div className="flex flex-col gap-3">
+              {avatarClaims.filter((a) => a.disponivel).map((a) => (
+                <button
+                  key={a.chave}
+                  onClick={() => handleClaim(a.chave)}
+                  disabled={claimCarregando}
+                  className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl hover:from-blue-100 hover:to-purple-100 transition-colors disabled:opacity-50"
+                >
+                  <span className="text-3xl">{a.emoji}</span>
+                  <div className="text-left">
+                    <div className="font-bold text-gray-800">{a.titulo}</div>
+                    <div className="text-xs text-gray-500">Toque para reivindicar</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setMostrarClaimModal(false)}
+              className="mt-4 w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Instrucao */}
       {!formAberto && (

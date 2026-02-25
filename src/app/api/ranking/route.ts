@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getAvatarTier } from '@/lib/avatares'
+import { getAvatarTier, SPECIAL_AVATARS } from '@/lib/avatares'
 
 export async function GET() {
   try {
-    const [denunciasPorVisitor, confirmacoesPorVisitor] = await Promise.all([
+    const [denunciasPorVisitor, confirmacoesPorVisitor, avatarEspeciais] = await Promise.all([
       prisma.denuncia.groupBy({
         by: ['visitorId'],
         where: { visitorId: { not: null } },
@@ -15,7 +15,13 @@ export async function GET() {
         where: { visitorId: { not: null } },
         _count: { id: true },
       }),
+      prisma.avatarEspecial.findMany(),
     ])
+
+    // Map de visitorId → avatar especial
+    const specialMap = new Map(
+      avatarEspeciais.map((a) => [a.visitorId, SPECIAL_AVATARS[a.chave]])
+    )
 
     const mapa = new Map<string, { denuncias: number; confirmacoes: number }>()
 
@@ -36,7 +42,8 @@ export async function GET() {
     const ranking = Array.from(mapa.entries())
       .map(([visitorId, stats]) => {
         const total = stats.denuncias + stats.confirmacoes
-        const tier = getAvatarTier(total, visitorId)
+        const special = specialMap.get(visitorId)
+        const tier = special || getAvatarTier(total)
         return {
           visitorId,
           avatar: tier.emoji,

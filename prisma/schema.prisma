@@ -82,6 +82,14 @@ model POI {
   @@map("pois")
 }
 
+model AvatarEspecial {
+  id        String   @id @default(uuid())
+  chave     String   @unique    // "poseidon" | "sereia"
+  visitorId String
+  criadoEm  DateTime @default(now())
+  @@map("avatares_especiais")
+}
+
 model PushSubscription {
   id         String   @id @default(uuid())
   endpoint   String   @unique

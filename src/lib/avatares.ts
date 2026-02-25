@@ -3,29 +3,12 @@ export interface AvatarTier {
   titulo: string
 }
 
-const SPECIAL_AVATARS: Record<string, AvatarTier> = {
+export const SPECIAL_AVATARS: Record<string, AvatarTier> = {
   poseidon: { emoji: '👑', titulo: 'Poseidon' },
   sereia: { emoji: '🧜‍♀️', titulo: 'Sereia' },
 }
 
-const SPECIAL_ENV_KEYS: Record<string, string> = {
-  POSEIDON_VISITOR_ID: 'poseidon',
-  SEREIA_VISITOR_ID: 'sereia',
-}
-
-export function getSpecialAvatar(visitorId: string): AvatarTier | null {
-  for (const [envKey, avatarKey] of Object.entries(SPECIAL_ENV_KEYS)) {
-    const id = process.env[envKey]
-    if (id && id === visitorId) return SPECIAL_AVATARS[avatarKey]
-  }
-  return null
-}
-
-export function getAvatarTier(total: number, visitorId?: string): AvatarTier {
-  if (visitorId) {
-    const special = getSpecialAvatar(visitorId)
-    if (special) return special
-  }
+export function getAvatarTier(total: number): AvatarTier {
   if (total >= 50) return { emoji: '🔱', titulo: 'Guardião da Praia' }
   if (total >= 20) return { emoji: '🐋', titulo: 'Baleia' }
   if (total >= 11) return { emoji: '🦈', titulo: 'Tubarão' }
