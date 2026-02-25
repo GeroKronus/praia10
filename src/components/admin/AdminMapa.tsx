@@ -144,7 +144,11 @@ export default function AdminMapa({ senha }: { senha: string }) {
     }
   }, [senha])
 
-  const handleCriado = () => {
+  const handleCriado = (poi: POI) => {
+    setPois((prev) => {
+      if (prev.some((p) => p.id === poi.id)) return prev
+      return [poi, ...prev]
+    })
     setFormAberto(false)
     setPontoClicado(null)
   }

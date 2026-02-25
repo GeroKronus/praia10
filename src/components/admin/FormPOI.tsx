@@ -7,7 +7,7 @@ interface FormPOIProps {
   latitude: number
   longitude: number
   senha: string
-  onCriado: () => void
+  onCriado: (poi: import('@/types').POI) => void
   onClose: () => void
 }
 
@@ -36,7 +36,8 @@ export default function FormPOI({ latitude, longitude, senha, onCriado, onClose 
         }),
       })
       if (res.ok) {
-        onCriado()
+        const poi = await res.json()
+        onCriado(poi)
       } else {
         alert('Erro ao criar POI')
       }
