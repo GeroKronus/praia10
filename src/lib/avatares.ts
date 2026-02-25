@@ -27,7 +27,7 @@ export function getAvatarTier(total: number, visitorId?: string): AvatarTier {
     if (special) return special
   }
   if (total >= 50) return { emoji: '🔱', titulo: 'Guardião da Praia' }
-  if (total >= 20) return { emoji: '🎣', titulo: 'Marlin Azul' }
+  if (total >= 20) return { emoji: '🐋', titulo: 'Baleia' }
   if (total >= 11) return { emoji: '🦈', titulo: 'Tubarão' }
   if (total >= 6) return { emoji: '🐬', titulo: 'Golfinho' }
   if (total >= 3) return { emoji: '🏄', titulo: 'Surfista' }
