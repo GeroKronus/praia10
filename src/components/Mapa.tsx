@@ -22,6 +22,7 @@ import PhotoModal from './PhotoModal'
 import { ToastProvider, useToastNotificacao } from './ToastNotificacao'
 import { getSocket } from '@/lib/socket'
 import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, TIPOS_EXPIRACAO_LONGA, CENTRO_PRAIA_MORRO } from '@/lib/constants'
+import { getAvatarTier } from '@/lib/avatares'
 import { useFotoModal } from '@/hooks/useFotoModal'
 import { useWindowFunction } from '@/hooks/useWindowFunction'
 
@@ -165,17 +166,21 @@ function FlyToHandler({ target }: { target: { lat: number; lng: number } | null 
   return null
 }
 
+interface AvatarInfo { emoji: string; titulo: string }
+
 // Componente para MarkerCluster
 function MarkerClusterGroup({
   denuncias,
   onRemover,
   onConfirmar,
   onCompartilhar,
+  avatarMap,
 }: {
   denuncias: Denuncia[]
   onRemover: (id: string) => void
   onConfirmar: (id: string) => void
   onCompartilhar: (id: string) => void
+  avatarMap: Map<string, AvatarInfo>
 }) {
   const map = useMap()
   const sessionId = useRef(getSessionId())
@@ -211,6 +216,12 @@ function MarkerClusterGroup({
       },
     })
 
+    // Fallback: contar denúncias por visitorId localmente para quem não está no ranking
+    const localCounts = new Map<string, number>()
+    denuncias.forEach((d) => {
+      if (d.visitorId) localCounts.set(d.visitorId, (localCounts.get(d.visitorId) || 0) + 1)
+    })
+
     denuncias.forEach((d) => {
       const resolvido = !!d.resolvidoEm
       const marker = L.marker([d.latitude, d.longitude], {
@@ -221,6 +232,9 @@ function MarkerClusterGroup({
       const data = new Date(d.criadoEm).toLocaleString('pt-BR')
       const ehMinha = d.sessionId === sessionId.current
       const tempo = tempoRestante(d.criadoEm, d.tipo)
+      const avatar = d.visitorId
+        ? avatarMap.get(d.visitorId) || getAvatarTier(localCounts.get(d.visitorId) || 0)
+        : null
 
       const resolvidoHtml = resolvido
         ? `<div style="
@@ -240,6 +254,17 @@ function MarkerClusterGroup({
           <div style="font-size: 14px; font-weight: bold; margin-bottom: 4px;">
             ${config.emoji} ${config.label}
           </div>
+          ${avatar ? `<div style="
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-bottom: 6px;
+          ">${avatar.emoji} <span style="color: #0369a1; font-weight: 600;">${avatar.titulo}</span></div>` : ''}
           ${d.descricao ? `<p style="font-size: 12px; color: #555; margin: 4px 0;">${d.descricao}</p>` : ''}
           ${d.temFoto ? `<button
             onclick="window.__verFoto__('${d.id}')"
@@ -392,6 +417,7 @@ export default function Mapa() {
   const [ultimaDenuncia, setUltimaDenuncia] = useState<Denuncia | null>(null)
   const [painelAberto, setPainelAberto] = useState<'utilidades' | 'feed' | 'setores' | 'ranking' | null>(null)
   const [isDark, setIsDark] = useState(isNightTime)
+  const [avatarMap, setAvatarMap] = useState<Map<string, AvatarInfo>>(new Map())
 
   const { fotoUrl, carregandoFoto, fecharFoto } = useFotoModal(FOTO_ENDPOINTS)
 
@@ -441,6 +467,22 @@ export default function Mapa() {
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setPois(data)
+      })
+      .catch(console.error)
+  }, [])
+
+  // Buscar ranking para avatares nos popups
+  useEffect(() => {
+    fetch('/api/ranking')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const map = new Map<string, AvatarInfo>()
+          for (const r of data) {
+            map.set(r.visitorId, { emoji: r.avatar, titulo: r.titulo })
+          }
+          setAvatarMap(map)
+        }
       })
       .catch(console.error)
   }, [])
@@ -618,6 +660,7 @@ export default function Mapa() {
             onRemover={handleRemover}
             onConfirmar={handleConfirmar}
             onCompartilhar={handleCompartilhar}
+            avatarMap={avatarMap}
           />
         )}
         <HeatmapLayer denuncias={denuncias} visivel={mostrarHeatmap} />

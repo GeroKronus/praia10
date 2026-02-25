@@ -34,6 +34,7 @@ export async function GET(request: Request) {
         latitude: true,
         longitude: true,
         sessionId: true,
+        visitorId: true,
         confirmacoes: true,
         fotoBase64: false,
         criadoEm: true,

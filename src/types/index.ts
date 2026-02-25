@@ -15,6 +15,7 @@ export interface Denuncia {
   latitude: number
   longitude: number
   sessionId: string
+  visitorId: string | null
   temFoto: boolean
   confirmacoes: number
   criadoEm: string
