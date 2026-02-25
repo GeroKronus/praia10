@@ -9,11 +9,6 @@ export const metadata: Metadata = {
   title: 'Praia10 - Denúncias em Tempo Real',
   description: 'Mapa colaborativo de denúncias da Praia do Morro - Guarapari/ES',
   manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'Praia10',
-  },
 }
 
 export const viewport: Viewport = {
@@ -31,6 +26,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
+      <head>
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Praia10" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      </head>
       <body className={inter.className}>
         {children}
         <ServiceWorkerRegistrar />
