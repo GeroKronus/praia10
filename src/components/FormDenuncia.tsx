@@ -124,7 +124,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
               </div>
             ) : (
               <label className={`flex flex-col items-center justify-center h-[72px] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors ${comprimindo ? 'opacity-50 pointer-events-none' : ''}`}>
-                <span className="text-xl">📷</span>
+                <span className="text-3xl">📷</span>
                 <span className="text-[9px] text-gray-400">
                   {comprimindo ? 'Comprimindo' : 'Foto'}
                 </span>
