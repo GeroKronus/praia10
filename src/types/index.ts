@@ -4,6 +4,7 @@ export enum TipoDenuncia {
   ANIMAIS = 'ANIMAIS',
   LIXO = 'LIXO',
   AMBULANTE_IRREGULAR = 'AMBULANTE_IRREGULAR',
+  CRIANCA_PERDIDA = 'CRIANCA_PERDIDA',
   OUTROS = 'OUTROS',
 }
 
@@ -38,5 +39,6 @@ export const TIPO_CONFIG: Record<TipoDenuncia, { label: string; emoji: string; c
   [TipoDenuncia.ANIMAIS]: { label: 'Animais', emoji: '🐕', cor: '#f39c12' },
   [TipoDenuncia.LIXO]: { label: 'Lixo', emoji: '🗑️', cor: '#27ae60' },
   [TipoDenuncia.AMBULANTE_IRREGULAR]: { label: 'Ambulante Irregular', emoji: '🚫', cor: '#e67e22' },
+  [TipoDenuncia.CRIANCA_PERDIDA]: { label: 'Criança Perdida', emoji: '👶', cor: '#e84393' },
   [TipoDenuncia.OUTROS]: { label: 'Outros', emoji: '⚠️', cor: '#95a5a6' },
 }
