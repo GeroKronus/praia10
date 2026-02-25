@@ -265,19 +265,8 @@ function MarkerClusterGroup({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(window as any).__confirmarDenuncia__ = (id: string) => onConfirmar(id)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).__verFoto__ = async (id: string) => {
-      try {
-        const res = await fetch(`/api/denuncias?fotoId=${id}`)
-        const data = await res.json()
-        if (data.fotoBase64) {
-          const win = window.open()
-          if (win) {
-            win.document.write(`<img src="${data.fotoBase64}" style="max-width:100%;max-height:100vh;margin:auto;display:block;" />`)
-          }
-        }
-      } catch (err) {
-        console.error('Erro ao carregar foto:', err)
-      }
+    ;(window as any).__verFoto__ = (id: string) => {
+      window.dispatchEvent(new CustomEvent('praia10-ver-foto', { detail: id }))
     }
     return () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -300,6 +289,8 @@ export default function Mapa() {
   const [mostrarHeatmap, setMostrarHeatmap] = useState(false)
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null)
   const [ultimaDenuncia, setUltimaDenuncia] = useState<Denuncia | null>(null)
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null)
+  const [carregandoFoto, setCarregandoFoto] = useState(false)
 
   // Toast de notificações
   useToastNotificacao(ultimaDenuncia)
@@ -353,6 +344,25 @@ export default function Mapa() {
       })
     }, 10000)
     return () => clearInterval(interval)
+  }, [])
+
+  // Listener para abrir foto via evento custom (popup do Leaflet)
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const id = (e as CustomEvent).detail
+      setCarregandoFoto(true)
+      try {
+        const res = await fetch(`/api/denuncias?fotoId=${id}`)
+        const data = await res.json()
+        if (data.fotoBase64) setFotoUrl(data.fotoBase64)
+      } catch (err) {
+        console.error('Erro ao carregar foto:', err)
+      } finally {
+        setCarregandoFoto(false)
+      }
+    }
+    window.addEventListener('praia10-ver-foto', handler)
+    return () => window.removeEventListener('praia10-ver-foto', handler)
   }, [])
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
@@ -494,6 +504,34 @@ export default function Mapa() {
           onSubmit={handleSubmit}
           onClose={handleClose}
         />
+      )}
+
+      {/* Modal de foto */}
+      {(fotoUrl || carregandoFoto) && (
+        <div
+          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80"
+          onClick={() => { setFotoUrl(null); setCarregandoFoto(false) }}
+        >
+          {carregandoFoto ? (
+            <div className="text-white text-lg">Carregando foto...</div>
+          ) : (
+            <div className="relative max-w-[90vw] max-h-[90vh]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={fotoUrl!}
+                alt="Foto da denúncia"
+                className="max-w-full max-h-[90vh] rounded-lg object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                onClick={() => setFotoUrl(null)}
+                className="absolute top-2 right-2 bg-black/60 text-white w-9 h-9 rounded-full flex items-center justify-center text-xl"
+              >
+                ×
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
