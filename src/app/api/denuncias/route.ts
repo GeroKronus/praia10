@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { TipoDenuncia } from '@prisma/client'
 
-const EXPIRACAO_MINUTOS = 10
+const EXPIRACAO_CURTA_MS = 10 * 60 * 1000       // 10 min (padrão)
+const EXPIRACAO_LONGA_MS = 12 * 60 * 60 * 1000  // 12h (LIXO, OUTROS)
+const TIPOS_EXPIRACAO_LONGA: TipoDenuncia[] = ['LIXO', 'OUTROS'] as TipoDenuncia[]
 
 export async function GET(request: Request) {
   try {
@@ -21,12 +24,17 @@ export async function GET(request: Request) {
     }
 
     // Listar denúncias ativas (sem foto para economizar banda)
-    const limite = new Date(Date.now() - EXPIRACAO_MINUTOS * 60 * 1000)
+    // Dois limites: 10min para tipos normais, 12h para LIXO/OUTROS
+    const limiteCurto = new Date(Date.now() - EXPIRACAO_CURTA_MS)
+    const limiteLongo = new Date(Date.now() - EXPIRACAO_LONGA_MS)
 
     const denuncias = await prisma.denuncia.findMany({
       where: {
         ativa: true,
-        criadoEm: { gte: limite },
+        OR: [
+          { tipo: { in: TIPOS_EXPIRACAO_LONGA }, criadoEm: { gte: limiteLongo } },
+          { tipo: { notIn: TIPOS_EXPIRACAO_LONGA }, criadoEm: { gte: limiteCurto } },
+        ],
       },
       select: {
         id: true,
