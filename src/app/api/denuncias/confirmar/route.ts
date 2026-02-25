@@ -1,30 +1,31 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { emitSocket } from '@/lib/socketEmitter'
 
 export async function POST(request: Request) {
   try {
     const { denunciaId, sessionId } = await request.json()
 
     if (!denunciaId || !sessionId) {
-      return NextResponse.json({ error: 'Campos obrigatórios: denunciaId, sessionId' }, { status: 400 })
+      return NextResponse.json({ error: 'Campos obrigatorios: denunciaId, sessionId' }, { status: 400 })
     }
 
     const denuncia = await prisma.denuncia.findUnique({ where: { id: denunciaId } })
     if (!denuncia || !denuncia.ativa) {
-      return NextResponse.json({ error: 'Denúncia não encontrada ou expirada' }, { status: 404 })
+      return NextResponse.json({ error: 'Denuncia nao encontrada ou expirada' }, { status: 404 })
     }
 
     if (denuncia.sessionId === sessionId) {
-      return NextResponse.json({ error: 'Não é possível confirmar sua própria denúncia' }, { status: 400 })
+      return NextResponse.json({ error: 'Nao e possivel confirmar sua propria denuncia' }, { status: 400 })
     }
 
-    // Tenta criar confirmação (@@unique impede duplicata)
+    // Tenta criar confirmacao (@@unique impede duplicata)
     try {
       await prisma.confirmacao.create({
         data: { denunciaId, sessionId },
       })
     } catch {
-      return NextResponse.json({ error: 'Você já confirmou esta denúncia' }, { status: 409 })
+      return NextResponse.json({ error: 'Voce ja confirmou esta denuncia' }, { status: 409 })
     }
 
     const atualizada = await prisma.denuncia.update({
@@ -32,15 +33,11 @@ export async function POST(request: Request) {
       data: { confirmacoes: { increment: 1 } },
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const io = (global as any).io
-    if (io) {
-      io.emit('denuncia-confirmada', { id: denunciaId, confirmacoes: atualizada.confirmacoes })
-    }
+    emitSocket('denuncia-confirmada', { id: denunciaId, confirmacoes: atualizada.confirmacoes })
 
     return NextResponse.json({ confirmacoes: atualizada.confirmacoes })
   } catch (error) {
-    console.error('Erro ao confirmar denúncia:', error)
-    return NextResponse.json({ error: 'Erro ao confirmar denúncia' }, { status: 500 })
+    console.error('Erro ao confirmar denuncia:', error)
+    return NextResponse.json({ error: 'Erro ao confirmar denuncia' }, { status: 500 })
   }
 }

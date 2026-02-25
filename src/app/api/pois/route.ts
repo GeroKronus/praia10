@@ -1,25 +1,18 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verificarAdmin } from '@/lib/auth-dashboard'
+import { emitSocket } from '@/lib/socketEmitter'
+import { buscarFoto, adicionarTemFoto, semFoto } from '@/lib/fotoQuery'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const fotoId = searchParams.get('fotoId')
 
-    // Retornar foto individual
     if (fotoId) {
-      const poi = await prisma.pOI.findUnique({
-        where: { id: fotoId },
-        select: { fotoBase64: true },
-      })
-      if (!poi || !poi.fotoBase64) {
-        return NextResponse.json({ error: 'Foto não encontrada' }, { status: 404 })
-      }
-      return NextResponse.json({ fotoBase64: poi.fotoBase64 })
+      return buscarFoto(prisma.pOI, fotoId)
     }
 
-    // Listar POIs (sem foto para economizar banda)
     const pois = await prisma.pOI.findMany({
       select: {
         id: true,
@@ -34,19 +27,7 @@ export async function GET(request: Request) {
       orderBy: { criadoEm: 'desc' },
     })
 
-    // Verificar quais têm foto
-    const ids = pois.map((p) => p.id)
-    const comFoto = await prisma.pOI.findMany({
-      where: { id: { in: ids }, fotoBase64: { not: null } },
-      select: { id: true },
-    })
-    const idsComFoto = new Set(comFoto.map((p) => p.id))
-
-    const resultado = pois.map((p) => ({
-      ...p,
-      temFoto: idsComFoto.has(p.id),
-    }))
-
+    const resultado = await adicionarTemFoto(prisma.pOI, pois)
     return NextResponse.json(resultado)
   } catch (error) {
     console.error('Erro ao buscar POIs:', error)
@@ -63,7 +44,7 @@ export async function POST(request: Request) {
     const { tipo, nome, descricao, latitude, longitude, fotoBase64 } = body
 
     if (!tipo || latitude == null || longitude == null) {
-      return NextResponse.json({ error: 'Campos obrigatórios: tipo, latitude, longitude' }, { status: 400 })
+      return NextResponse.json({ error: 'Campos obrigatorios: tipo, latitude, longitude' }, { status: 400 })
     }
 
     const poi = await prisma.pOI.create({
@@ -77,23 +58,8 @@ export async function POST(request: Request) {
       },
     })
 
-    // Emitir sem a foto (pesada) para o socket
-    const poiSemFoto = {
-      id: poi.id,
-      tipo: poi.tipo,
-      nome: poi.nome,
-      descricao: poi.descricao,
-      latitude: poi.latitude,
-      longitude: poi.longitude,
-      temFoto: !!poi.fotoBase64,
-      criadoEm: poi.criadoEm,
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const io = (global as any).io
-    if (io) {
-      io.emit('novo-poi', poiSemFoto)
-    }
+    const poiSemFoto = semFoto(poi)
+    emitSocket('novo-poi', poiSemFoto)
 
     return NextResponse.json(poiSemFoto, { status: 201 })
   } catch (error) {
@@ -111,21 +77,17 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id')
 
     if (!id) {
-      return NextResponse.json({ error: 'Campo obrigatório: id' }, { status: 400 })
+      return NextResponse.json({ error: 'Campo obrigatorio: id' }, { status: 400 })
     }
 
     const poi = await prisma.pOI.findUnique({ where: { id } })
     if (!poi) {
-      return NextResponse.json({ error: 'POI não encontrado' }, { status: 404 })
+      return NextResponse.json({ error: 'POI nao encontrado' }, { status: 404 })
     }
 
     await prisma.pOI.delete({ where: { id } })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const io = (global as any).io
-    if (io) {
-      io.emit('poi-removido', { id })
-    }
+    emitSocket('poi-removido', { id })
 
     return NextResponse.json({ ok: true })
   } catch (error) {

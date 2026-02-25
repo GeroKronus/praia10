@@ -1,30 +1,19 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { TipoDenuncia } from '@prisma/client'
-
-const EXPIRACAO_CURTA_MS = 10 * 60 * 1000       // 10 min (padrão)
-const EXPIRACAO_LONGA_MS = 12 * 60 * 60 * 1000  // 12h (LIXO, OUTROS)
-const TIPOS_EXPIRACAO_LONGA: TipoDenuncia[] = ['LIXO', 'OUTROS'] as TipoDenuncia[]
+import { emitSocket } from '@/lib/socketEmitter'
+import { buscarFoto, adicionarTemFoto, semFoto } from '@/lib/fotoQuery'
+import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, TIPOS_EXPIRACAO_LONGA } from '@/lib/constants'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const fotoId = searchParams.get('fotoId')
 
-    // Retornar foto individual
     if (fotoId) {
-      const denuncia = await prisma.denuncia.findUnique({
-        where: { id: fotoId },
-        select: { fotoBase64: true },
-      })
-      if (!denuncia || !denuncia.fotoBase64) {
-        return NextResponse.json({ error: 'Foto não encontrada' }, { status: 404 })
-      }
-      return NextResponse.json({ fotoBase64: denuncia.fotoBase64 })
+      return buscarFoto(prisma.denuncia, fotoId)
     }
 
-    // Listar denúncias ativas (sem foto para economizar banda)
-    // Dois limites: 10min para tipos normais, 12h para LIXO/OUTROS
     const limiteCurto = new Date(Date.now() - EXPIRACAO_CURTA_MS)
     const limiteLongo = new Date(Date.now() - EXPIRACAO_LONGA_MS)
 
@@ -32,8 +21,8 @@ export async function GET(request: Request) {
       where: {
         ativa: true,
         OR: [
-          { tipo: { in: TIPOS_EXPIRACAO_LONGA }, criadoEm: { gte: limiteLongo } },
-          { tipo: { notIn: TIPOS_EXPIRACAO_LONGA }, criadoEm: { gte: limiteCurto } },
+          { tipo: { in: TIPOS_EXPIRACAO_LONGA as TipoDenuncia[] }, criadoEm: { gte: limiteLongo } },
+          { tipo: { notIn: TIPOS_EXPIRACAO_LONGA as TipoDenuncia[] }, criadoEm: { gte: limiteCurto } },
         ],
       },
       select: {
@@ -53,23 +42,11 @@ export async function GET(request: Request) {
       orderBy: { criadoEm: 'desc' },
     })
 
-    // Adicionar campo temFoto verificando no banco
-    const ids = denuncias.map((d) => d.id)
-    const comFoto = await prisma.denuncia.findMany({
-      where: { id: { in: ids }, fotoBase64: { not: null } },
-      select: { id: true },
-    })
-    const idsComFoto = new Set(comFoto.map((d) => d.id))
-
-    const resultado = denuncias.map((d) => ({
-      ...d,
-      temFoto: idsComFoto.has(d.id),
-    }))
-
+    const resultado = await adicionarTemFoto(prisma.denuncia, denuncias)
     return NextResponse.json(resultado)
   } catch (error) {
-    console.error('Erro ao buscar denúncias:', error)
-    return NextResponse.json({ error: 'Erro ao buscar denúncias' }, { status: 500 })
+    console.error('Erro ao buscar denuncias:', error)
+    return NextResponse.json({ error: 'Erro ao buscar denuncias' }, { status: 500 })
   }
 }
 
@@ -79,7 +56,7 @@ export async function POST(request: Request) {
     const { tipo, descricao, latitude, longitude, sessionId, fotoBase64 } = body
 
     if (!tipo || latitude == null || longitude == null || !sessionId) {
-      return NextResponse.json({ error: 'Campos obrigatórios: tipo, latitude, longitude, sessionId' }, { status: 400 })
+      return NextResponse.json({ error: 'Campos obrigatorios: tipo, latitude, longitude, sessionId' }, { status: 400 })
     }
 
     const denuncia = await prisma.denuncia.create({
@@ -93,31 +70,13 @@ export async function POST(request: Request) {
       },
     })
 
-    // Emitir sem a foto (pesada) para o socket
-    const denunciaSemFoto = {
-      id: denuncia.id,
-      tipo: denuncia.tipo,
-      descricao: denuncia.descricao,
-      latitude: denuncia.latitude,
-      longitude: denuncia.longitude,
-      sessionId: denuncia.sessionId,
-      confirmacoes: denuncia.confirmacoes,
-      temFoto: !!denuncia.fotoBase64,
-      criadoEm: denuncia.criadoEm,
-      resolvidoEm: denuncia.resolvidoEm,
-      resolvidoPor: denuncia.resolvidoPor,
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const io = (global as any).io
-    if (io) {
-      io.emit('nova-denuncia', denunciaSemFoto)
-    }
+    const denunciaSemFoto = semFoto(denuncia)
+    emitSocket('nova-denuncia', denunciaSemFoto)
 
     return NextResponse.json(denunciaSemFoto, { status: 201 })
   } catch (error) {
-    console.error('Erro ao criar denúncia:', error)
-    return NextResponse.json({ error: 'Erro ao criar denúncia' }, { status: 500 })
+    console.error('Erro ao criar denuncia:', error)
+    return NextResponse.json({ error: 'Erro ao criar denuncia' }, { status: 500 })
   }
 }
 
@@ -128,17 +87,17 @@ export async function DELETE(request: Request) {
     const sessionId = searchParams.get('sessionId')
 
     if (!id || !sessionId) {
-      return NextResponse.json({ error: 'Campos obrigatórios: id, sessionId' }, { status: 400 })
+      return NextResponse.json({ error: 'Campos obrigatorios: id, sessionId' }, { status: 400 })
     }
 
     const denuncia = await prisma.denuncia.findUnique({ where: { id } })
 
     if (!denuncia) {
-      return NextResponse.json({ error: 'Denúncia não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Denuncia nao encontrada' }, { status: 404 })
     }
 
     if (denuncia.sessionId !== sessionId) {
-      return NextResponse.json({ error: 'Sem permissão para remover esta denúncia' }, { status: 403 })
+      return NextResponse.json({ error: 'Sem permissao para remover esta denuncia' }, { status: 403 })
     }
 
     await prisma.denuncia.update({
@@ -146,15 +105,11 @@ export async function DELETE(request: Request) {
       data: { ativa: false },
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const io = (global as any).io
-    if (io) {
-      io.emit('denuncia-removida', { id })
-    }
+    emitSocket('denuncia-removida', { id })
 
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('Erro ao remover denúncia:', error)
-    return NextResponse.json({ error: 'Erro ao remover denúncia' }, { status: 500 })
+    console.error('Erro ao remover denuncia:', error)
+    return NextResponse.json({ error: 'Erro ao remover denuncia' }, { status: 500 })
   }
 }

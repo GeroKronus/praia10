@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import imageCompression from 'browser-image-compression'
+import { useState } from 'react'
 import { TipoDenuncia, TIPO_CONFIG, NovaDenuncia } from '@/types'
+import { useFotoUpload } from '@/hooks/useFotoUpload'
+import FotoUploadInput from './FotoUploadInput'
 
 interface FormDenunciaProps {
   latitude: number
@@ -14,43 +15,8 @@ interface FormDenunciaProps {
 export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }: FormDenunciaProps) {
   const [tipo, setTipo] = useState<TipoDenuncia | null>(null)
   const [descricao, setDescricao] = useState('')
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
-  const [fotoBase64, setFotoBase64] = useState<string | null>(null)
-  const [comprimindo, setComprimindo] = useState(false)
   const [enviando, setEnviando] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setComprimindo(true)
-    try {
-      const comprimida = await imageCompression(file, {
-        maxSizeMB: 0.5,
-        maxWidthOrHeight: 1024,
-        useWebWorker: true,
-      })
-
-      const reader = new FileReader()
-      reader.onload = () => {
-        const base64 = reader.result as string
-        setFotoPreview(base64)
-        setFotoBase64(base64)
-      }
-      reader.readAsDataURL(comprimida)
-    } catch (err) {
-      console.error('Erro ao comprimir foto:', err)
-    } finally {
-      setComprimindo(false)
-    }
-  }
-
-  const removerFoto = () => {
-    setFotoPreview(null)
-    setFotoBase64(null)
-    if (inputRef.current) inputRef.current.value = ''
-  }
+  const { fotoPreview, fotoBase64, comprimindo, inputRef, handleFoto, removerFoto } = useFotoUpload()
 
   const handleSubmit = async () => {
     if (!tipo) return
@@ -76,7 +42,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
       <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md mx-auto p-4 sm:p-5">
         {/* Header */}
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-lg font-bold text-gray-800">Nova Denúncia</h2>
+          <h2 className="text-lg font-bold text-gray-800">Nova Denuncia</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
@@ -85,7 +51,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
           </button>
         </div>
 
-        {/* Tipo — botões compactos em 3 colunas */}
+        {/* Tipo — botoes compactos em 3 colunas */}
         <div className="grid grid-cols-3 gap-1.5 mb-3">
           {Object.entries(TIPO_CONFIG).map(([key, config]) => (
             <button
@@ -103,44 +69,18 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
           ))}
         </div>
 
-        {/* Foto + Descrição lado a lado */}
+        {/* Foto + Descricao lado a lado */}
         <div className="flex gap-2 mb-3">
-          {/* Foto */}
-          <div className="w-24 flex-shrink-0">
-            {fotoPreview ? (
-              <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={fotoPreview}
-                  alt="Preview"
-                  className="w-24 h-[72px] object-cover rounded-lg"
-                />
-                <button
-                  onClick={removerFoto}
-                  className="absolute -top-1.5 -right-1.5 bg-black/60 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs"
-                >
-                  ×
-                </button>
-              </div>
-            ) : (
-              <label className={`flex flex-col items-center justify-center h-[72px] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors ${comprimindo ? 'opacity-50 pointer-events-none' : ''}`}>
-                <span className="text-3xl">📷</span>
-                <span className="text-[9px] text-gray-400">
-                  {comprimindo ? 'Comprimindo...' : 'Tirar foto'}
-                </span>
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFoto}
-                  className="hidden"
-                />
-              </label>
-            )}
-          </div>
+          <FotoUploadInput
+            fotoPreview={fotoPreview}
+            comprimindo={comprimindo}
+            inputRef={inputRef}
+            onFoto={handleFoto}
+            onRemover={removerFoto}
+            label="Tirar foto"
+          />
 
-          {/* Descrição */}
+          {/* Descricao */}
           <textarea
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
@@ -151,7 +91,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
           />
         </div>
 
-        {/* Botão enviar */}
+        {/* Botao enviar */}
         <button
           onClick={handleSubmit}
           disabled={!tipo || enviando}
@@ -161,7 +101,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
               : 'bg-gray-300 cursor-not-allowed'
           }`}
         >
-          {enviando ? 'Enviando...' : 'Enviar Denúncia'}
+          {enviando ? 'Enviando...' : 'Enviar Denuncia'}
         </button>
       </div>
     </div>

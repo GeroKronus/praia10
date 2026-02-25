@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import imageCompression from 'browser-image-compression'
+import { useState } from 'react'
 import { TipoPOI, POI_CONFIG } from '@/types'
+import { useFotoUpload } from '@/hooks/useFotoUpload'
+import FotoUploadInput from '@/components/FotoUploadInput'
 
 interface FormPOIProps {
   latitude: number
@@ -16,43 +17,8 @@ export default function FormPOI({ latitude, longitude, senha, onCriado, onClose 
   const [tipo, setTipo] = useState<TipoPOI | null>(null)
   const [nome, setNome] = useState('')
   const [descricao, setDescricao] = useState('')
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
-  const [fotoBase64, setFotoBase64] = useState<string | null>(null)
-  const [comprimindo, setComprimindo] = useState(false)
   const [enviando, setEnviando] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setComprimindo(true)
-    try {
-      const comprimida = await imageCompression(file, {
-        maxSizeMB: 0.5,
-        maxWidthOrHeight: 1024,
-        useWebWorker: true,
-      })
-
-      const reader = new FileReader()
-      reader.onload = () => {
-        const base64 = reader.result as string
-        setFotoPreview(base64)
-        setFotoBase64(base64)
-      }
-      reader.readAsDataURL(comprimida)
-    } catch (err) {
-      console.error('Erro ao comprimir foto:', err)
-    } finally {
-      setComprimindo(false)
-    }
-  }
-
-  const removerFoto = () => {
-    setFotoPreview(null)
-    setFotoBase64(null)
-    if (inputRef.current) inputRef.current.value = ''
-  }
+  const { fotoPreview, fotoBase64, comprimindo, inputRef, handleFoto, removerFoto } = useFotoUpload()
 
   const handleSubmit = async () => {
     if (!tipo) return
@@ -106,7 +72,7 @@ export default function FormPOI({ latitude, longitude, senha, onCriado, onClose 
           {latitude.toFixed(5)}, {longitude.toFixed(5)}
         </p>
 
-        {/* Tipo - grid de botões */}
+        {/* Tipo - grid de botoes */}
         <div className="grid grid-cols-4 gap-1.5 mb-3">
           {Object.entries(POI_CONFIG).map(([key, config]) => (
             <button
@@ -128,60 +94,34 @@ export default function FormPOI({ latitude, longitude, senha, onCriado, onClose 
         <input
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          placeholder="Nome (opcional, ex: Quiosque do Zé)"
+          placeholder="Nome (opcional, ex: Quiosque do Ze)"
           className="w-full p-2 mb-2 border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           maxLength={100}
         />
 
-        {/* Foto + Descrição lado a lado */}
+        {/* Foto + Descricao lado a lado */}
         <div className="flex gap-2 mb-3">
-          {/* Foto */}
-          <div className="w-24 flex-shrink-0">
-            {fotoPreview ? (
-              <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={fotoPreview}
-                  alt="Preview"
-                  className="w-24 h-[72px] object-cover rounded-lg"
-                />
-                <button
-                  onClick={removerFoto}
-                  className="absolute -top-1.5 -right-1.5 bg-black/60 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs"
-                >
-                  ×
-                </button>
-              </div>
-            ) : (
-              <label className={`flex flex-col items-center justify-center h-[72px] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors ${comprimindo ? 'opacity-50 pointer-events-none' : ''}`}>
-                <span className="text-3xl">📷</span>
-                <span className="text-[9px] text-gray-400">
-                  {comprimindo ? 'Comprimindo...' : 'Adicionar foto'}
-                </span>
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFoto}
-                  className="hidden"
-                />
-              </label>
-            )}
-          </div>
+          <FotoUploadInput
+            fotoPreview={fotoPreview}
+            comprimindo={comprimindo}
+            inputRef={inputRef}
+            onFoto={handleFoto}
+            onRemover={removerFoto}
+            label="Adicionar foto"
+          />
 
-          {/* Descrição */}
+          {/* Descricao */}
           <textarea
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Descrição (opcional)"
+            placeholder="Descricao (opcional)"
             className="flex-1 p-2 border border-gray-300 rounded-lg resize-none text-sm text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             rows={2}
             maxLength={200}
           />
         </div>
 
-        {/* Botão criar */}
+        {/* Botao criar */}
         <button
           onClick={handleSubmit}
           disabled={!tipo || enviando}

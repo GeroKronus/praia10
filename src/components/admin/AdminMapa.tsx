@@ -8,9 +8,12 @@ import 'leaflet/dist/leaflet.css'
 import { POI, TipoPOI, POI_CONFIG } from '@/types'
 import { criarIconePOI } from '@/components/IconePOI'
 import FormPOI from '@/components/admin/FormPOI'
+import PhotoModal from '@/components/PhotoModal'
 import { getSocket } from '@/lib/socket'
+import { CENTRO_PRAIA_MORRO } from '@/lib/constants'
+import { useFotoModal } from '@/hooks/useFotoModal'
+import { useWindowFunction } from '@/hooks/useWindowFunction'
 
-const CENTRO_PRAIA_MORRO: L.LatLngExpression = [-20.6478, -40.4928]
 const ZOOM_INICIAL = 16
 
 function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void }) {
@@ -84,24 +87,23 @@ function POIMarkers({ pois, onExcluir }: { pois: POI[]; onExcluir: (id: string) 
     }
   }, [pois, map])
 
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).__excluirPOI__ = (id: string) => onExcluir(id)
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (window as any).__excluirPOI__
-    }
-  }, [onExcluir])
+  useWindowFunction('__excluirPOI__', onExcluir)
+
+  // __verFotoPOIAdmin__ is handled by useFotoModal in the parent component
 
   return null
 }
+
+const FOTO_ENDPOINTS_ADMIN = [
+  { windowName: '__verFotoPOIAdmin__', eventName: 'praia10-ver-foto-poi-admin', apiUrl: '/api/pois' },
+]
 
 export default function AdminMapa({ senha }: { senha: string }) {
   const [pois, setPois] = useState<POI[]>([])
   const [formAberto, setFormAberto] = useState(false)
   const [pontoClicado, setPontoClicado] = useState<{ lat: number; lng: number } | null>(null)
-  const [fotoUrl, setFotoUrl] = useState<string | null>(null)
-  const [carregandoFoto, setCarregandoFoto] = useState(false)
+
+  const { fotoUrl, carregandoFoto, fecharFoto } = useFotoModal(FOTO_ENDPOINTS_ADMIN)
 
   const buscarPois = useCallback(async () => {
     try {
@@ -139,33 +141,6 @@ export default function AdminMapa({ senha }: { senha: string }) {
     }
   }, [])
 
-  // Listener para abrir foto de POI
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).__verFotoPOIAdmin__ = (id: string) => {
-      window.dispatchEvent(new CustomEvent('praia10-ver-foto-poi-admin', { detail: id }))
-    }
-    const handler = async (e: Event) => {
-      const id = (e as CustomEvent).detail
-      setCarregandoFoto(true)
-      try {
-        const res = await fetch(`/api/pois?fotoId=${id}`)
-        const data = await res.json()
-        if (data.fotoBase64) setFotoUrl(data.fotoBase64)
-      } catch (err) {
-        console.error('Erro ao carregar foto POI:', err)
-      } finally {
-        setCarregandoFoto(false)
-      }
-    }
-    window.addEventListener('praia10-ver-foto-poi-admin', handler)
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (window as any).__verFotoPOIAdmin__
-      window.removeEventListener('praia10-ver-foto-poi-admin', handler)
-    }
-  }, [])
-
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setPontoClicado({ lat, lng })
     setFormAberto(true)
@@ -195,6 +170,8 @@ export default function AdminMapa({ senha }: { senha: string }) {
     setPontoClicado(null)
   }
 
+  const centro: L.LatLngExpression = [CENTRO_PRAIA_MORRO[0], CENTRO_PRAIA_MORRO[1]]
+
   return (
     <div className="relative w-screen h-screen">
       {/* Header */}
@@ -208,7 +185,7 @@ export default function AdminMapa({ senha }: { senha: string }) {
       </div>
 
       <MapContainer
-        center={CENTRO_PRAIA_MORRO}
+        center={centro}
         zoom={ZOOM_INICIAL}
         className="w-full h-full"
         zoomControl={false}
@@ -240,32 +217,7 @@ export default function AdminMapa({ senha }: { senha: string }) {
       )}
 
       {/* Modal de foto */}
-      {(fotoUrl || carregandoFoto) && (
-        <div
-          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80"
-          onClick={() => { setFotoUrl(null); setCarregandoFoto(false) }}
-        >
-          {carregandoFoto ? (
-            <div className="text-white text-lg">Carregando foto...</div>
-          ) : (
-            <div className="relative max-w-[90vw] max-h-[90vh]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={fotoUrl!}
-                alt="Foto do POI"
-                className="max-w-full max-h-[90vh] rounded-lg object-contain"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <button
-                onClick={() => setFotoUrl(null)}
-                className="absolute top-2 right-2 bg-black/60 text-white w-9 h-9 rounded-full flex items-center justify-center text-xl"
-              >
-                ×
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      <PhotoModal fotoUrl={fotoUrl} carregando={carregandoFoto} onClose={fecharFoto} />
     </div>
   )
 }

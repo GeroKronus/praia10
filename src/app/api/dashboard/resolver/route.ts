@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verificarAdmin } from '@/lib/auth-dashboard'
+import { emitSocket } from '@/lib/socketEmitter'
 
 export async function POST(request: Request) {
   const authError = verificarAdmin(request)
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
     const { denunciaId, resolvidoPor } = body
 
     if (!denunciaId) {
-      return NextResponse.json({ error: 'denunciaId é obrigatório' }, { status: 400 })
+      return NextResponse.json({ error: 'denunciaId e obrigatorio' }, { status: 400 })
     }
 
     const denuncia = await prisma.denuncia.update({
@@ -35,20 +36,15 @@ export async function POST(request: Request) {
       },
     })
 
-    // Emitir via Socket.io
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const io = (global as any).io
-    if (io) {
-      io.emit('denuncia-resolvida', {
-        id: denuncia.id,
-        resolvidoEm: denuncia.resolvidoEm,
-        resolvidoPor: denuncia.resolvidoPor,
-      })
-    }
+    emitSocket('denuncia-resolvida', {
+      id: denuncia.id,
+      resolvidoEm: denuncia.resolvidoEm,
+      resolvidoPor: denuncia.resolvidoPor,
+    })
 
     return NextResponse.json(denuncia)
   } catch (error) {
-    console.error('Erro ao resolver denúncia:', error)
-    return NextResponse.json({ error: 'Erro ao resolver denúncia' }, { status: 500 })
+    console.error('Erro ao resolver denuncia:', error)
+    return NextResponse.json({ error: 'Erro ao resolver denuncia' }, { status: 500 })
   }
 }

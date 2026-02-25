@@ -16,14 +16,14 @@ import HeatmapLayer from './HeatmapLayer'
 import PainelSetores from './PainelSetores'
 import TimelineFeed from './TimelineFeed'
 import FeedPOIs from './FeedPOIs'
+import PhotoModal from './PhotoModal'
 import { ToastProvider, useToastNotificacao } from './ToastNotificacao'
 import { getSocket } from '@/lib/socket'
+import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, TIPOS_EXPIRACAO_LONGA, CENTRO_PRAIA_MORRO } from '@/lib/constants'
+import { useFotoModal } from '@/hooks/useFotoModal'
+import { useWindowFunction } from '@/hooks/useWindowFunction'
 
-const CENTRO_PRAIA_MORRO: L.LatLngExpression = [-20.6478, -40.4928]
 const ZOOM_INICIAL = 16
-const EXPIRACAO_MS = 10 * 60 * 1000
-const EXPIRACAO_LONGA_MS = 12 * 60 * 60 * 1000
-const TIPOS_EXPIRACAO_LONGA: string[] = ['LIXO', 'OUTROS']
 
 function getSessionId(): string {
   let id = sessionStorage.getItem('praia10_session')
@@ -53,7 +53,7 @@ function registrarVisita() {
 }
 
 function tempoRestante(criadoEm: string, tipo: string): string {
-  const expiracao = TIPOS_EXPIRACAO_LONGA.includes(tipo) ? EXPIRACAO_LONGA_MS : EXPIRACAO_MS
+  const expiracao = TIPOS_EXPIRACAO_LONGA.includes(tipo) ? EXPIRACAO_LONGA_MS : EXPIRACAO_CURTA_MS
   const diff = expiracao - (Date.now() - new Date(criadoEm).getTime())
   if (diff <= 0) return 'Expirando...'
   const horas = Math.floor(diff / 3600000)
@@ -63,7 +63,7 @@ function tempoRestante(criadoEm: string, tipo: string): string {
   return `${min}:${seg.toString().padStart(2, '0')}`
 }
 
-// Componente de localização do usuário
+// Componente de localizacao do usuario
 function UserLocation() {
   const map = useMap()
   const markerRef = useRef<L.CircleMarker | null>(null)
@@ -98,7 +98,7 @@ function UserLocation() {
           }).addTo(map)
         }
       },
-      (err) => console.log('Geolocalização indisponível:', err.message),
+      (err) => console.log('Geolocalizacao indisponivel:', err.message),
       { enableHighAccuracy: true, maximumAge: 10000 }
     )
 
@@ -112,13 +112,13 @@ function UserLocation() {
   return null
 }
 
-// Botão para centralizar na localização do usuário (renderizado fora do mapa)
+// Botao para centralizar na localizacao do usuario (renderizado fora do mapa)
 function BotaoLocalizacao({ onCentralizar }: { onCentralizar: () => void }) {
   return (
     <button
       onClick={onCentralizar}
       className="absolute top-32 right-4 z-[500] w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-lg cursor-pointer"
-      title="Minha localização"
+      title="Minha localizacao"
     >
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3"/>
@@ -267,7 +267,7 @@ function MarkerClusterGroup({
               font-weight: bold;
               cursor: pointer;
             "
-          >Remover denúncia</button>` : ''}
+          >Remover denuncia</button>` : ''}
         </div>
       `)
 
@@ -278,30 +278,16 @@ function MarkerClusterGroup({
     return () => { map.removeLayer(cluster) }
   }, [denuncias, map])
 
-  // Expor funções globais para os botões nos popups
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).__removerDenuncia__ = (id: string) => onRemover(id)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).__confirmarDenuncia__ = (id: string) => onConfirmar(id)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).__verFoto__ = (id: string) => {
-      window.dispatchEvent(new CustomEvent('praia10-ver-foto', { detail: id }))
-    }
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (window as any).__removerDenuncia__
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (window as any).__confirmarDenuncia__
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (window as any).__verFoto__
-    }
-  }, [onRemover, onConfirmar])
+  // Expor funcoes globais para os botoes nos popups
+  useWindowFunction('__removerDenuncia__', onRemover)
+  useWindowFunction('__confirmarDenuncia__', onConfirmar)
+
+  // __verFoto__ is handled by useFotoModal in the parent component
 
   return null
 }
 
-// Componente para POIs no mapa público
+// Componente para POIs no mapa publico
 function POIMarkersPublic({ pois }: { pois: POI[] }) {
   const map = useMap()
   const markersRef = useRef<L.Marker[]>([])
@@ -349,19 +335,15 @@ function POIMarkersPublic({ pois }: { pois: POI[] }) {
     }
   }, [pois, map])
 
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).__verFotoPOI__ = (id: string) => {
-      window.dispatchEvent(new CustomEvent('praia10-ver-foto-poi', { detail: id }))
-    }
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (window as any).__verFotoPOI__
-    }
-  }, [])
+  // __verFotoPOI__ is handled by useFotoModal in the parent component
 
   return null
 }
+
+const FOTO_ENDPOINTS = [
+  { windowName: '__verFoto__', eventName: 'praia10-ver-foto', apiUrl: '/api/denuncias' },
+  { windowName: '__verFotoPOI__', eventName: 'praia10-ver-foto-poi', apiUrl: '/api/pois' },
+]
 
 export default function Mapa() {
   const [denuncias, setDenuncias] = useState<Denuncia[]>([])
@@ -372,18 +354,18 @@ export default function Mapa() {
   const [mostrarHeatmap, setMostrarHeatmap] = useState(false)
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null)
   const [ultimaDenuncia, setUltimaDenuncia] = useState<Denuncia | null>(null)
-  const [fotoUrl, setFotoUrl] = useState<string | null>(null)
-  const [carregandoFoto, setCarregandoFoto] = useState(false)
 
-  // Toast de notificações
+  const { fotoUrl, carregandoFoto, fecharFoto } = useFotoModal(FOTO_ENDPOINTS)
+
+  // Toast de notificacoes
   useToastNotificacao(ultimaDenuncia)
 
-  // Registrar visita única (analytics)
+  // Registrar visita unica (analytics)
   useEffect(() => {
     registrarVisita()
   }, [])
 
-  // Buscar denúncias existentes
+  // Buscar denuncias existentes
   useEffect(() => {
     fetch('/api/denuncias')
       .then((res) => res.json())
@@ -453,54 +435,18 @@ export default function Mapa() {
     }
   }, [])
 
-  // Timer local para remover denúncias expiradas
+  // Timer local para remover denuncias expiradas
   useEffect(() => {
     const interval = setInterval(() => {
       setDenuncias((prev) => {
         const agora = Date.now()
         return prev.filter((d) => {
-          const expiracao = TIPOS_EXPIRACAO_LONGA.includes(d.tipo) ? EXPIRACAO_LONGA_MS : EXPIRACAO_MS
+          const expiracao = TIPOS_EXPIRACAO_LONGA.includes(d.tipo) ? EXPIRACAO_LONGA_MS : EXPIRACAO_CURTA_MS
           return agora - new Date(d.criadoEm).getTime() < expiracao
         })
       })
     }, 10000)
     return () => clearInterval(interval)
-  }, [])
-
-  // Listener para abrir foto via evento custom (popup do Leaflet)
-  useEffect(() => {
-    const handler = async (e: Event) => {
-      const id = (e as CustomEvent).detail
-      setCarregandoFoto(true)
-      try {
-        const res = await fetch(`/api/denuncias?fotoId=${id}`)
-        const data = await res.json()
-        if (data.fotoBase64) setFotoUrl(data.fotoBase64)
-      } catch (err) {
-        console.error('Erro ao carregar foto:', err)
-      } finally {
-        setCarregandoFoto(false)
-      }
-    }
-    const handlerPOI = async (e: Event) => {
-      const id = (e as CustomEvent).detail
-      setCarregandoFoto(true)
-      try {
-        const res = await fetch(`/api/pois?fotoId=${id}`)
-        const data = await res.json()
-        if (data.fotoBase64) setFotoUrl(data.fotoBase64)
-      } catch (err) {
-        console.error('Erro ao carregar foto POI:', err)
-      } finally {
-        setCarregandoFoto(false)
-      }
-    }
-    window.addEventListener('praia10-ver-foto', handler)
-    window.addEventListener('praia10-ver-foto-poi', handlerPOI)
-    return () => {
-      window.removeEventListener('praia10-ver-foto', handler)
-      window.removeEventListener('praia10-ver-foto-poi', handlerPOI)
-    }
   }, [])
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
@@ -521,8 +467,8 @@ export default function Mapa() {
         setPontoClicado(null)
       }
     } catch (error) {
-      console.error('Erro ao enviar denúncia:', error)
-      alert('Erro ao enviar denúncia. Tente novamente.')
+      console.error('Erro ao enviar denuncia:', error)
+      alert('Erro ao enviar denuncia. Tente novamente.')
     }
   }
 
@@ -536,7 +482,7 @@ export default function Mapa() {
         setDenuncias((prev) => prev.filter((d) => d.id !== id))
       }
     } catch (error) {
-      console.error('Erro ao remover denúncia:', error)
+      console.error('Erro ao remover denuncia:', error)
     }
   }, [])
 
@@ -553,7 +499,7 @@ export default function Mapa() {
         alert(data.error || 'Erro ao confirmar')
       }
     } catch (error) {
-      console.error('Erro ao confirmar denúncia:', error)
+      console.error('Erro ao confirmar denuncia:', error)
     }
   }, [])
 
@@ -566,6 +512,8 @@ export default function Mapa() {
     setFlyToTarget({ lat, lng })
   }, [])
 
+  const centro: L.LatLngExpression = [CENTRO_PRAIA_MORRO[0], CENTRO_PRAIA_MORRO[1]]
+
   return (
     <div className="relative w-full h-full">
       <ToastProvider />
@@ -577,7 +525,7 @@ export default function Mapa() {
       )}
 
       <MapContainer
-        center={CENTRO_PRAIA_MORRO}
+        center={centro}
         zoom={ZOOM_INICIAL}
         className="w-full h-full"
         zoomControl={false}
@@ -600,11 +548,11 @@ export default function Mapa() {
         <FlyToHandler target={flyToTarget} />
       </MapContainer>
 
-      {/* Botão localização */}
+      {/* Botao localizacao */}
       <BotaoLocalizacao onCentralizar={() => {
         navigator.geolocation.getCurrentPosition(
           (pos) => setFlyToTarget({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => alert('Não foi possível obter sua localização'),
+          () => alert('Nao foi possivel obter sua localizacao'),
           { enableHighAccuracy: true }
         )
       }} />
@@ -632,7 +580,7 @@ export default function Mapa() {
       {/* Setores */}
       <PainelSetores denuncias={denuncias} />
 
-      {/* Instrução */}
+      {/* Instrucao */}
       {!formAberto && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] bg-white/90 backdrop-blur rounded-full shadow-md px-5 py-2.5 pointer-events-none">
           <span className="text-xs font-semibold text-gray-500">
@@ -641,7 +589,7 @@ export default function Mapa() {
         </div>
       )}
 
-      {/* Formulário */}
+      {/* Formulario */}
       {formAberto && pontoClicado && (
         <FormDenuncia
           latitude={pontoClicado.lat}
@@ -652,32 +600,7 @@ export default function Mapa() {
       )}
 
       {/* Modal de foto */}
-      {(fotoUrl || carregandoFoto) && (
-        <div
-          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80"
-          onClick={() => { setFotoUrl(null); setCarregandoFoto(false) }}
-        >
-          {carregandoFoto ? (
-            <div className="text-white text-lg">Carregando foto...</div>
-          ) : (
-            <div className="relative max-w-[90vw] max-h-[90vh]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={fotoUrl!}
-                alt="Foto da denúncia"
-                className="max-w-full max-h-[90vh] rounded-lg object-contain"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <button
-                onClick={() => setFotoUrl(null)}
-                className="absolute top-2 right-2 bg-black/60 text-white w-9 h-9 rounded-full flex items-center justify-center text-xl"
-              >
-                ×
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      <PhotoModal fotoUrl={fotoUrl} carregando={carregandoFoto} onClose={fecharFoto} />
     </div>
   )
 }
