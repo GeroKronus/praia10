@@ -42,7 +42,10 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
       <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md mx-auto p-4 sm:p-5">
         {/* Header */}
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-lg font-bold text-gray-800">Nova Denuncia</h2>
+          <div>
+            <h2 className="text-lg font-bold text-gray-800">Nova Denúncia</h2>
+            <p className="text-[10px] text-gray-400">Clique no local correto da denúncia</p>
+          </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
@@ -101,7 +104,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
               : 'bg-gray-300 cursor-not-allowed'
           }`}
         >
-          {enviando ? 'Enviando...' : 'Enviar Denuncia'}
+          {enviando ? 'Enviando...' : 'Enviar Denúncia'}
         </button>
       </div>
     </div>
