@@ -108,15 +108,24 @@ export default function Mapa() {
       .finally(() => setCarregando(false))
   }, [])
 
-  // Conectar Socket.io
+  // Conectar Socket.io para tempo real
   useEffect(() => {
     const socket = getSocket()
 
+    socket.on('connect', () => {
+      console.log('Socket.io conectado:', socket.id)
+    })
+
     socket.on('nova-denuncia', (denuncia: Denuncia) => {
-      setDenuncias((prev) => [denuncia, ...prev])
+      setDenuncias((prev) => {
+        // Evitar duplicatas
+        if (prev.some((d) => d.id === denuncia.id)) return prev
+        return [denuncia, ...prev]
+      })
     })
 
     return () => {
+      socket.off('connect')
       socket.off('nova-denuncia')
     }
   }, [])
