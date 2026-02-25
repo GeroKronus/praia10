@@ -24,6 +24,7 @@ model Denuncia {
   latitude      Float
   longitude     Float
   sessionId     String
+  visitorId     String?
   ativa         Boolean        @default(true)
   fotoBase64    String?        @db.Text
   confirmacoes  Int            @default(0)
@@ -39,6 +40,7 @@ model Confirmacao {
   id         String   @id @default(uuid())
   denunciaId String
   sessionId  String
+  visitorId  String?
   criadoEm   DateTime @default(now())
   denuncia   Denuncia @relation(fields: [denunciaId], references: [id])
 
@@ -78,4 +80,16 @@ model POI {
   fotoBase64  String?  @db.Text
   criadoEm    DateTime @default(now())
   @@map("pois")
+}
+
+model PushSubscription {
+  id         String   @id @default(uuid())
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  visitorId  String?
+  latitude   Float?
+  longitude  Float?
+  criadoEm   DateTime @default(now())
+  @@map("push_subscriptions")
 }

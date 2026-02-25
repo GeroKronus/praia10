@@ -5,6 +5,7 @@ import { emitSocket } from '@/lib/socketEmitter'
 import { buscarFoto, adicionarTemFoto, semFoto } from '@/lib/fotoQuery'
 import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, TIPOS_EXPIRACAO_LONGA } from '@/lib/constants'
 import { verificarAdmin } from '@/lib/auth-dashboard'
+import { notificarPush } from '@/lib/pushNotifier'
 
 export async function GET(request: Request) {
   try {
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { tipo, descricao, latitude, longitude, sessionId, fotoBase64 } = body
+    const { tipo, descricao, latitude, longitude, sessionId, fotoBase64, visitorId } = body
 
     if (!tipo || latitude == null || longitude == null || !sessionId) {
       return NextResponse.json({ error: 'Campos obrigatorios: tipo, latitude, longitude, sessionId' }, { status: 400 })
@@ -67,12 +68,16 @@ export async function POST(request: Request) {
         latitude,
         longitude,
         sessionId,
+        visitorId: visitorId || null,
         fotoBase64: fotoBase64 || null,
       },
     })
 
     const denunciaSemFoto = semFoto(denuncia)
     emitSocket('nova-denuncia', denunciaSemFoto)
+
+    // Push notifications — fire-and-forget
+    notificarPush(denuncia).catch(() => {})
 
     return NextResponse.json(denunciaSemFoto, { status: 201 })
   } catch (error) {

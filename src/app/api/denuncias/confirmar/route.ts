@@ -4,7 +4,7 @@ import { emitSocket } from '@/lib/socketEmitter'
 
 export async function POST(request: Request) {
   try {
-    const { denunciaId, sessionId } = await request.json()
+    const { denunciaId, sessionId, visitorId } = await request.json()
 
     if (!denunciaId || !sessionId) {
       return NextResponse.json({ error: 'Campos obrigatorios: denunciaId, sessionId' }, { status: 400 })
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     // Tenta criar confirmacao (@@unique impede duplicata)
     try {
       await prisma.confirmacao.create({
-        data: { denunciaId, sessionId },
+        data: { denunciaId, sessionId, visitorId: visitorId || null },
       })
     } catch {
       return NextResponse.json({ error: 'Voce ja confirmou esta denuncia' }, { status: 409 })

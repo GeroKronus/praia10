@@ -16,6 +16,8 @@ import HeatmapLayer from './HeatmapLayer'
 import PainelSetores from './PainelSetores'
 import TimelineFeed from './TimelineFeed'
 import FeedPOIs from './FeedPOIs'
+import RankingColaboradores from './RankingColaboradores'
+import PushSubscriber from './PushSubscriber'
 import PhotoModal from './PhotoModal'
 import { ToastProvider, useToastNotificacao } from './ToastNotificacao'
 import { getSocket } from '@/lib/socket'
@@ -24,6 +26,14 @@ import { useFotoModal } from '@/hooks/useFotoModal'
 import { useWindowFunction } from '@/hooks/useWindowFunction'
 
 const ZOOM_INICIAL = 16
+
+const TILE_LIGHT = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+
+function isNightTime(): boolean {
+  const h = new Date().getHours()
+  return h >= 18 || h < 6
+}
 
 function getSessionId(): string {
   let id = sessionStorage.getItem('praia10_session')
@@ -160,10 +170,12 @@ function MarkerClusterGroup({
   denuncias,
   onRemover,
   onConfirmar,
+  onCompartilhar,
 }: {
   denuncias: Denuncia[]
   onRemover: (id: string) => void
   onConfirmar: (id: string) => void
+  onCompartilhar: (id: string) => void
 }) {
   const map = useMap()
   const sessionId = useRef(getSessionId())
@@ -276,6 +288,21 @@ function MarkerClusterGroup({
               cursor: pointer;
             "
           >Remover denuncia</button>` : ''}
+          <button
+            onclick="window.__compartilharDenuncia__('${d.id}')"
+            style="
+              margin-top: 6px;
+              width: 100%;
+              padding: 6px;
+              background: #22c55e;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 13px;
+              font-weight: bold;
+              cursor: pointer;
+            "
+          >📤 Compartilhar</button>
         </div>
       `)
 
@@ -289,6 +316,7 @@ function MarkerClusterGroup({
   // Expor funcoes globais para os botoes nos popups
   useWindowFunction('__removerDenuncia__', onRemover)
   useWindowFunction('__confirmarDenuncia__', onConfirmar)
+  useWindowFunction('__compartilharDenuncia__', onCompartilhar)
 
   // __verFoto__ is handled by useFotoModal in the parent component
 
@@ -362,12 +390,30 @@ export default function Mapa() {
   const [mostrarHeatmap, setMostrarHeatmap] = useState(false)
   const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null)
   const [ultimaDenuncia, setUltimaDenuncia] = useState<Denuncia | null>(null)
-  const [painelAberto, setPainelAberto] = useState<'utilidades' | 'feed' | 'setores' | null>(null)
+  const [painelAberto, setPainelAberto] = useState<'utilidades' | 'feed' | 'setores' | 'ranking' | null>(null)
+  const [isDark, setIsDark] = useState(isNightTime)
 
   const { fotoUrl, carregandoFoto, fecharFoto } = useFotoModal(FOTO_ENDPOINTS)
 
-  const togglePainel = useCallback((painel: 'utilidades' | 'feed' | 'setores') => {
+  const togglePainel = useCallback((painel: 'utilidades' | 'feed' | 'setores' | 'ranking') => {
     setPainelAberto((p) => (p === painel ? null : painel))
+  }, [])
+
+  // Dark mode — re-check a cada 60s
+  useEffect(() => {
+    const interval = setInterval(() => setIsDark(isNightTime()), 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Deep link — ler ?lat=X&lng=Y da URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const lat = parseFloat(params.get('lat') || '')
+    const lng = parseFloat(params.get('lng') || '')
+    if (!isNaN(lat) && !isNaN(lng)) {
+      setFlyToTarget({ lat, lng })
+      window.history.replaceState({}, '', window.location.pathname)
+    }
   }, [])
 
   // Toast de notificacoes
@@ -409,6 +455,7 @@ export default function Mapa() {
         return [denuncia, ...prev]
       })
       setUltimaDenuncia(denuncia)
+      if (navigator.vibrate) navigator.vibrate(200)
     })
 
     socket.on('denuncia-removida', ({ id }: { id: string }) => {
@@ -502,11 +549,12 @@ export default function Mapa() {
 
   const handleConfirmar = useCallback(async (id: string) => {
     const sessionId = getSessionId()
+    const visitorId = localStorage.getItem('praia10_visitor') || undefined
     try {
       const res = await fetch('/api/denuncias/confirmar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ denunciaId: id, sessionId }),
+        body: JSON.stringify({ denunciaId: id, sessionId, visitorId }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -516,6 +564,20 @@ export default function Mapa() {
       console.error('Erro ao confirmar denuncia:', error)
     }
   }, [])
+
+  const handleCompartilhar = useCallback((id: string) => {
+    const d = denuncias.find((den) => den.id === id)
+    if (!d) return
+    const config = TIPO_CONFIG[d.tipo as TipoDenuncia]
+    const url = `${window.location.origin}/?lat=${d.latitude}&lng=${d.longitude}`
+    const texto = `${config.emoji} ${config.label} na Praia do Morro! Veja no Praia10: ${url}`
+
+    if (navigator.share) {
+      navigator.share({ title: 'Praia10', text: texto, url }).catch(() => {})
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(texto).then(() => alert('Link copiado!'))
+    }
+  }, [denuncias])
 
   const handleClose = () => {
     setFormAberto(false)
@@ -545,8 +607,9 @@ export default function Mapa() {
         zoomControl={false}
       >
         <TileLayer
+          key={isDark ? 'dark' : 'light'}
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url={isDark ? TILE_DARK : TILE_LIGHT}
         />
         <ClickHandler onClick={handleMapClick} />
         {!mostrarHeatmap && (
@@ -554,6 +617,7 @@ export default function Mapa() {
             denuncias={denuncias}
             onRemover={handleRemover}
             onConfirmar={handleConfirmar}
+            onCompartilhar={handleCompartilhar}
           />
         )}
         <HeatmapLayer denuncias={denuncias} visivel={mostrarHeatmap} />
@@ -633,6 +697,15 @@ export default function Mapa() {
               <span>📊</span>
               <span>Setores</span>
             </button>
+            <button
+              onClick={() => togglePainel('ranking')}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                painelAberto === 'ranking' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <span>🏆</span>
+              <span>Top</span>
+            </button>
           </div>
 
           <button
@@ -659,6 +732,9 @@ export default function Mapa() {
             {painelAberto === 'setores' && (
               <PainelSetores denuncias={denuncias} />
             )}
+            {painelAberto === 'ranking' && (
+              <RankingColaboradores onClose={() => setPainelAberto(null)} />
+            )}
           </div>
         )}
       </div>
@@ -679,8 +755,13 @@ export default function Mapa() {
           longitude={pontoClicado.lng}
           onSubmit={handleSubmit}
           onClose={handleClose}
+          denuncias={denuncias}
+          onConfirmar={handleConfirmar}
         />
       )}
+
+      {/* Push notifications */}
+      <PushSubscriber />
 
       {/* Modal de foto */}
       <PhotoModal fotoUrl={fotoUrl} carregando={carregandoFoto} onClose={fecharFoto} />

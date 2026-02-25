@@ -1,0 +1,21 @@
+{
+  "name": "Praia10 - Denúncias em Tempo Real",
+  "short_name": "Praia10",
+  "description": "Mapa colaborativo de denúncias da Praia do Morro - Guarapari/ES",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

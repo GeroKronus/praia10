@@ -33,6 +33,7 @@ export interface NovaDenuncia {
   longitude: number
   sessionId: string
   fotoBase64?: string
+  visitorId?: string
 }
 
 export interface DashboardStats {

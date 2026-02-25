@@ -1,22 +1,41 @@
 'use client'
 
-import { useState } from 'react'
-import { TipoDenuncia, TIPO_CONFIG, NovaDenuncia } from '@/types'
+import { useState, useMemo } from 'react'
+import { TipoDenuncia, TIPO_CONFIG, NovaDenuncia, Denuncia } from '@/types'
 import { useFotoUpload } from '@/hooks/useFotoUpload'
 import FotoUploadInput from './FotoUploadInput'
+import { calcularDistancia, formatarDistancia } from '@/lib/distancia'
 
 interface FormDenunciaProps {
   latitude: number
   longitude: number
   onSubmit: (denuncia: NovaDenuncia) => void
   onClose: () => void
+  denuncias: Denuncia[]
+  onConfirmar: (id: string) => void
 }
 
-export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }: FormDenunciaProps) {
+const RAIO_PROXIMIDADE = 50 // metros
+
+export default function FormDenuncia({ latitude, longitude, onSubmit, onClose, denuncias, onConfirmar }: FormDenunciaProps) {
   const [tipo, setTipo] = useState<TipoDenuncia | null>(null)
   const [descricao, setDescricao] = useState('')
   const [enviando, setEnviando] = useState(false)
   const { fotoPreview, fotoBase64, comprimindo, inputRef, handleFoto, removerFoto } = useFotoUpload()
+
+  // Proximidade: encontrar denúncia do mesmo tipo a menos de 50m
+  const denunciaProxima = useMemo(() => {
+    if (!tipo) return null
+    let melhor: { denuncia: Denuncia; distancia: number } | null = null
+    for (const d of denuncias) {
+      if (d.tipo !== tipo || d.resolvidoEm) continue
+      const dist = calcularDistancia(latitude, longitude, d.latitude, d.longitude)
+      if (dist <= RAIO_PROXIMIDADE && (!melhor || dist < melhor.distancia)) {
+        melhor = { denuncia: d, distancia: dist }
+      }
+    }
+    return melhor
+  }, [tipo, denuncias, latitude, longitude])
 
   const handleSubmit = async () => {
     if (!tipo) return
@@ -26,6 +45,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
       sessionId = crypto.randomUUID()
       sessionStorage.setItem('praia10_session', sessionId)
     }
+    const visitorId = localStorage.getItem('praia10_visitor') || undefined
     onSubmit({
       tipo,
       descricao: descricao.trim() || undefined,
@@ -33,6 +53,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
       longitude,
       sessionId,
       fotoBase64: fotoBase64 || undefined,
+      visitorId,
     })
   }
 
@@ -71,6 +92,22 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
             </button>
           ))}
         </div>
+
+        {/* Banner de proximidade */}
+        {denunciaProxima && (
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-800 mb-2">
+              Já existe uma denúncia de <strong>{TIPO_CONFIG[tipo!].label}</strong> a{' '}
+              <strong>{formatarDistancia(denunciaProxima.distancia)}</strong>. Deseja confirmar aquela?
+            </p>
+            <button
+              onClick={() => { onConfirmar(denunciaProxima.denuncia.id); onClose() }}
+              className="w-full py-2 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition-colors"
+            >
+              👍 Eu também! (confirmar existente)
+            </button>
+          </div>
+        )}
 
         {/* Foto + Descricao lado a lado */}
         <div className="flex gap-2 mb-3">
