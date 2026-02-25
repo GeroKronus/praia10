@@ -18,9 +18,11 @@ html, body {
   overflow: hidden;
 }
 
-/* Dashboard: libera scroll e height auto */
+/* Dashboard e Admin Testes: libera scroll e height auto */
 html:has(.dashboard-page),
-html:has(.dashboard-page) body {
+html:has(.dashboard-page) body,
+html:has(.admin-testes-page),
+html:has(.admin-testes-page) body {
   height: auto;
   overflow: auto;
   overflow-x: hidden;
