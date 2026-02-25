@@ -74,6 +74,7 @@ model POI {
   descricao   String?
   latitude    Float
   longitude   Float
+  fotoBase64  String?  @db.Text
   criadoEm    DateTime @default(now())
   @@map("pois")
 }

@@ -88,5 +88,6 @@ export interface POI {
   descricao: string | null
   latitude: number
   longitude: number
+  temFoto: boolean
   criadoEm: string
 }

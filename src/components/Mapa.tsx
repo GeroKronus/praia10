@@ -322,6 +322,19 @@ function POIMarkersPublic({ pois }: { pois: POI[] }) {
             ${config.emoji} ${poi.nome || config.label}
           </div>
           ${poi.descricao ? `<p style="font-size: 12px; color: #555; margin: 4px 0;">${poi.descricao}</p>` : ''}
+          ${poi.temFoto ? `<button
+            onclick="window.__verFotoPOI__('${poi.id}')"
+            style="
+              margin: 6px 0;
+              padding: 4px 10px;
+              background: #3b82f6;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 12px;
+              cursor: pointer;
+            "
+          >📷 Ver foto</button>` : ''}
           <p style="font-size: 11px; color: ${config.cor}; font-weight: 600;">${config.label}</p>
         </div>
       `)
@@ -335,6 +348,17 @@ function POIMarkersPublic({ pois }: { pois: POI[] }) {
       markersRef.current = []
     }
   }, [pois, map])
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__verFotoPOI__ = (id: string) => {
+      window.dispatchEvent(new CustomEvent('praia10-ver-foto-poi', { detail: id }))
+    }
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).__verFotoPOI__
+    }
+  }, [])
 
   return null
 }
@@ -458,8 +482,25 @@ export default function Mapa() {
         setCarregandoFoto(false)
       }
     }
+    const handlerPOI = async (e: Event) => {
+      const id = (e as CustomEvent).detail
+      setCarregandoFoto(true)
+      try {
+        const res = await fetch(`/api/pois?fotoId=${id}`)
+        const data = await res.json()
+        if (data.fotoBase64) setFotoUrl(data.fotoBase64)
+      } catch (err) {
+        console.error('Erro ao carregar foto POI:', err)
+      } finally {
+        setCarregandoFoto(false)
+      }
+    }
     window.addEventListener('praia10-ver-foto', handler)
-    return () => window.removeEventListener('praia10-ver-foto', handler)
+    window.addEventListener('praia10-ver-foto-poi', handlerPOI)
+    return () => {
+      window.removeEventListener('praia10-ver-foto', handler)
+      window.removeEventListener('praia10-ver-foto-poi', handlerPOI)
+    }
   }, [])
 
   const handleMapClick = useCallback((lat: number, lng: number) => {

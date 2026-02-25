@@ -54,9 +54,11 @@ export default function FeedPOIs({ pois, onFlyTo }: FeedPOIsProps) {
                       <p className="text-xs font-medium text-gray-700">
                         {poi.nome || config.label}
                       </p>
-                      {poi.descricao && (
+                      {poi.descricao ? (
                         <p className="text-[10px] text-gray-400 truncate">{poi.descricao}</p>
-                      )}
+                      ) : poi.temFoto ? (
+                        <p className="text-[10px] text-gray-400">📷 Com foto</p>
+                      ) : null}
                     </div>
                     <span className="text-[10px] text-gray-300 flex-shrink-0">{config.label}</span>
                   </button>

@@ -42,6 +42,19 @@ function POIMarkers({ pois, onExcluir }: { pois: POI[]; onExcluir: (id: string) 
             ${config.emoji} ${poi.nome || config.label}
           </div>
           ${poi.descricao ? `<p style="font-size: 12px; color: #555; margin: 4px 0;">${poi.descricao}</p>` : ''}
+          ${poi.temFoto ? `<button
+            onclick="window.__verFotoPOIAdmin__('${poi.id}')"
+            style="
+              margin: 6px 0;
+              padding: 4px 10px;
+              background: #3b82f6;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 12px;
+              cursor: pointer;
+            "
+          >📷 Ver foto</button>` : ''}
           <p style="font-size: 11px; color: #999; margin-top: 4px;">${config.label}</p>
           <button
             onclick="window.__excluirPOI__('${poi.id}')"
@@ -87,6 +100,8 @@ export default function AdminMapa({ senha }: { senha: string }) {
   const [pois, setPois] = useState<POI[]>([])
   const [formAberto, setFormAberto] = useState(false)
   const [pontoClicado, setPontoClicado] = useState<{ lat: number; lng: number } | null>(null)
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null)
+  const [carregandoFoto, setCarregandoFoto] = useState(false)
 
   const buscarPois = useCallback(async () => {
     try {
@@ -121,6 +136,33 @@ export default function AdminMapa({ senha }: { senha: string }) {
     return () => {
       socket.off('novo-poi')
       socket.off('poi-removido')
+    }
+  }, [])
+
+  // Listener para abrir foto de POI
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__verFotoPOIAdmin__ = (id: string) => {
+      window.dispatchEvent(new CustomEvent('praia10-ver-foto-poi-admin', { detail: id }))
+    }
+    const handler = async (e: Event) => {
+      const id = (e as CustomEvent).detail
+      setCarregandoFoto(true)
+      try {
+        const res = await fetch(`/api/pois?fotoId=${id}`)
+        const data = await res.json()
+        if (data.fotoBase64) setFotoUrl(data.fotoBase64)
+      } catch (err) {
+        console.error('Erro ao carregar foto POI:', err)
+      } finally {
+        setCarregandoFoto(false)
+      }
+    }
+    window.addEventListener('praia10-ver-foto-poi-admin', handler)
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).__verFotoPOIAdmin__
+      window.removeEventListener('praia10-ver-foto-poi-admin', handler)
     }
   }, [])
 
@@ -195,6 +237,34 @@ export default function AdminMapa({ senha }: { senha: string }) {
           onCriado={handleCriado}
           onClose={() => { setFormAberto(false); setPontoClicado(null) }}
         />
+      )}
+
+      {/* Modal de foto */}
+      {(fotoUrl || carregandoFoto) && (
+        <div
+          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80"
+          onClick={() => { setFotoUrl(null); setCarregandoFoto(false) }}
+        >
+          {carregandoFoto ? (
+            <div className="text-white text-lg">Carregando foto...</div>
+          ) : (
+            <div className="relative max-w-[90vw] max-h-[90vh]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={fotoUrl!}
+                alt="Foto do POI"
+                className="max-w-full max-h-[90vh] rounded-lg object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                onClick={() => setFotoUrl(null)}
+                className="absolute top-2 right-2 bg-black/60 text-white w-9 h-9 rounded-full flex items-center justify-center text-xl"
+              >
+                ×
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
