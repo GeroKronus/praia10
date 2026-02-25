@@ -19,7 +19,7 @@ export default function PainelSetores({ denuncias }: PainelSetoresProps) {
   const ranking = useMemo(() => calcularRanking(denuncias), [denuncias])
 
   return (
-    <div className="absolute bottom-20 left-4 z-[500]">
+    <div className="absolute bottom-28 left-4 z-[500]">
       <button
         onClick={() => setAberto(!aberto)}
         className="bg-white rounded-lg shadow-lg px-3 py-2 flex items-center gap-2 hover:bg-gray-50 transition-colors"

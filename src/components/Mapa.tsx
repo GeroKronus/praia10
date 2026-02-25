@@ -123,14 +123,14 @@ function BotaoLocalizacao() {
   }, [map])
 
   useEffect(() => {
-    const control = new L.Control({ position: 'bottomright' })
+    const control = new L.Control({ position: 'topright' })
     control.onAdd = () => {
       const btn = L.DomUtil.create('button', 'leaflet-bar')
       btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
         <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
       </svg>`
-      btn.style.cssText = 'width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:white;cursor:pointer;border-radius:8px;'
+      btn.style.cssText = 'width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:white;cursor:pointer;border-radius:8px;margin-top:48px;'
       btn.title = 'Minha localização'
       btn.onclick = (e) => {
         e.stopPropagation()
