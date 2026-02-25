@@ -102,6 +102,38 @@ export async function GET(request: Request) {
     })
     const porSetor = Array.from(setorMap.entries()).map(([setor, total]) => ({ setor, total }))
 
+    // Visitantes únicos hoje
+    const hojeStr = agora.toISOString().slice(0, 10)
+    const visitantesHoje = await prisma.visita.count({
+      where: { data: hojeStr },
+    })
+
+    // Visitantes únicos últimos 7 dias
+    const diasSemana: string[] = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(agora)
+      d.setDate(d.getDate() - i)
+      diasSemana.push(d.toISOString().slice(0, 10))
+    }
+    const visitantesSemana = await prisma.visita.count({
+      where: { data: { in: diasSemana } },
+    })
+
+    // Visitantes por dia (últimos 7 dias)
+    const visitasPorDiaRaw = await prisma.visita.groupBy({
+      by: ['data'],
+      _count: { id: true },
+      where: { data: { in: diasSemana } },
+    })
+    const visitasDiaMap = new Map<string, number>()
+    visitasPorDiaRaw.forEach((v) => visitasDiaMap.set(v.data, v._count.id))
+
+    // Merge visitantes into porDia
+    const porDiaComVisitantes = porDia.map((d) => ({
+      ...d,
+      visitantes: visitasDiaMap.get(d.dia) || 0,
+    }))
+
     return NextResponse.json({
       totalHoje,
       totalSemana,
@@ -109,8 +141,10 @@ export async function GET(request: Request) {
       resolvidasHoje,
       porTipo,
       porHora,
-      porDia,
+      porDia: porDiaComVisitantes,
       porSetor,
+      visitantesHoje,
+      visitantesSemana,
     })
   } catch (error) {
     console.error('Erro ao buscar stats:', error)

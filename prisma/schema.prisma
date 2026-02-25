@@ -45,3 +45,13 @@ model Confirmacao {
   @@unique([denunciaId, sessionId])
   @@map("confirmacoes")
 }
+
+model Visita {
+  id         String   @id @default(uuid())
+  visitorId  String
+  data       String   // "2026-02-25" (uma entrada por visitante por dia)
+  criadoEm   DateTime @default(now())
+
+  @@unique([visitorId, data])
+  @@map("visitas")
+}

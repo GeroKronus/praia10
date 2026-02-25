@@ -112,6 +112,7 @@ export default function DashboardPage() {
             totalSemana={stats.totalSemana}
             ativasAgora={stats.ativasAgora}
             resolvidasHoje={stats.resolvidasHoje}
+            visitantesHoje={stats.visitantesHoje}
           />
         )}
 

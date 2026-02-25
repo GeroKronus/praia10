@@ -5,6 +5,7 @@ interface StatsCardsProps {
   totalSemana: number
   ativasAgora: number
   resolvidasHoje: number
+  visitantesHoje: number
 }
 
 const cards = [
@@ -12,11 +13,12 @@ const cards = [
   { key: 'totalSemana', label: 'Semana', icon: '📊', cor: 'bg-purple-500' },
   { key: 'ativasAgora', label: 'Ativas', icon: '🔴', cor: 'bg-red-500' },
   { key: 'resolvidasHoje', label: 'Resolvidas', icon: '✅', cor: 'bg-green-500' },
+  { key: 'visitantesHoje', label: 'Visitantes', icon: '👥', cor: 'bg-teal-500' },
 ] as const
 
 export default function StatsCards(props: StatsCardsProps) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       {cards.map((card) => (
         <div
           key={card.key}

@@ -1,9 +1,9 @@
 'use client'
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts'
 
 interface ChartPorDiaProps {
-  data: { dia: string; total: number }[]
+  data: { dia: string; total: number; visitantes: number }[]
 }
 
 export default function ChartPorDia({ data }: ChartPorDiaProps) {
@@ -23,8 +23,10 @@ export default function ChartPorDia({ data }: ChartPorDiaProps) {
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="label" tick={{ fontSize: 12 }} />
             <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-            <Tooltip formatter={(value) => [`${value} denúncia(s)`, 'Total']} />
-            <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="total" name="Denúncias" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="visitantes" name="Visitantes" fill="#14b8a6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       )}

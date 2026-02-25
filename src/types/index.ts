@@ -42,8 +42,10 @@ export interface DashboardStats {
   resolvidasHoje: number
   porTipo: { tipo: string; label: string; total: number; cor: string }[]
   porHora: { hora: number; total: number }[]
-  porDia: { dia: string; total: number }[]
+  porDia: { dia: string; total: number; visitantes: number }[]
   porSetor: { setor: string; total: number }[]
+  visitantesHoje: number
+  visitantesSemana: number
 }
 
 export const TIPO_CONFIG: Record<TipoDenuncia, { label: string; emoji: string; cor: string }> = {

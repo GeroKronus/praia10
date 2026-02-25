@@ -32,6 +32,24 @@ function getSessionId(): string {
   return id
 }
 
+function getVisitorId(): string {
+  let id = localStorage.getItem('praia10_visitor')
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem('praia10_visitor', id)
+  }
+  return id
+}
+
+function registrarVisita() {
+  const visitorId = getVisitorId()
+  fetch('/api/visita', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ visitorId }),
+  }).catch(() => {}) // fire-and-forget
+}
+
 function tempoRestante(criadoEm: string, tipo: string): string {
   const expiracao = TIPOS_EXPIRACAO_LONGA.includes(tipo) ? EXPIRACAO_LONGA_MS : EXPIRACAO_MS
   const diff = expiracao - (Date.now() - new Date(criadoEm).getTime())
@@ -313,6 +331,11 @@ export default function Mapa() {
 
   // Toast de notificações
   useToastNotificacao(ultimaDenuncia)
+
+  // Registrar visita única (analytics)
+  useEffect(() => {
+    registrarVisita()
+  }, [])
 
   // Buscar denúncias existentes
   useEffect(() => {
