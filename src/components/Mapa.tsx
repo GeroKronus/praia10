@@ -34,6 +34,91 @@ function tempoRestante(criadoEm: string): string {
   return `${min}:${seg.toString().padStart(2, '0')}`
 }
 
+// Componente de localização do usuário
+function UserLocation() {
+  const map = useMap()
+  const markerRef = useRef<L.CircleMarker | null>(null)
+  const circleRef = useRef<L.Circle | null>(null)
+
+  useEffect(() => {
+    if (!navigator.geolocation) return
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords
+        const latlng: L.LatLngExpression = [latitude, longitude]
+
+        if (markerRef.current) {
+          markerRef.current.setLatLng(latlng)
+          circleRef.current?.setLatLng(latlng)
+          circleRef.current?.setRadius(accuracy)
+        } else {
+          circleRef.current = L.circle(latlng, {
+            radius: accuracy,
+            color: '#3b82f6',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.1,
+            weight: 1,
+          }).addTo(map)
+
+          markerRef.current = L.circleMarker(latlng, {
+            radius: 8,
+            color: '#fff',
+            fillColor: '#3b82f6',
+            fillOpacity: 1,
+            weight: 3,
+          }).addTo(map)
+        }
+      },
+      (err) => console.log('Geolocalização indisponível:', err.message),
+      { enableHighAccuracy: true, maximumAge: 10000 }
+    )
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId)
+      markerRef.current?.remove()
+      circleRef.current?.remove()
+    }
+  }, [map])
+
+  return null
+}
+
+// Botão para centralizar na localização do usuário
+function BotaoLocalizacao() {
+  const map = useMap()
+
+  const centralizar = () => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => map.flyTo([pos.coords.latitude, pos.coords.longitude], 18),
+      () => alert('Não foi possível obter sua localização'),
+      { enableHighAccuracy: true }
+    )
+  }
+
+  useEffect(() => {
+    const control = new L.Control({ position: 'bottomright' })
+    control.onAdd = () => {
+      const btn = L.DomUtil.create('button', 'leaflet-bar')
+      btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+      </svg>`
+      btn.style.cssText = 'width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:white;cursor:pointer;border-radius:8px;'
+      btn.title = 'Minha localização'
+      btn.onclick = (e) => {
+        e.stopPropagation()
+        centralizar()
+      }
+      return btn
+    }
+    control.addTo(map)
+    return () => { control.remove() }
+  }, [map])
+
+  return null
+}
+
 // Componente para capturar cliques no mapa
 function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void }) {
   useMapEvents({
@@ -268,6 +353,8 @@ export default function Mapa() {
         />
         <ClickHandler onClick={handleMapClick} />
         <MarkerClusterGroup denuncias={denuncias} onRemover={handleRemover} />
+        <UserLocation />
+        <BotaoLocalizacao />
       </MapContainer>
 
       {/* Contador de denúncias */}
