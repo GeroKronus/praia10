@@ -23,7 +23,7 @@ import { ToastProvider, useToastNotificacao } from './ToastNotificacao'
 import { getSocket } from '@/lib/socket'
 import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, TIPOS_EXPIRACAO_LONGA, CENTRO_PRAIA_MORRO } from '@/lib/constants'
 import { getAvatarTier } from '@/lib/avatares'
-import { getVisitorId } from '@/lib/visitor'
+import { getVisitorId, reconcileVisitorId } from '@/lib/visitor'
 import { useFotoModal } from '@/hooks/useFotoModal'
 import { useWindowFunction } from '@/hooks/useWindowFunction'
 
@@ -440,6 +440,13 @@ export default function Mapa() {
 
   // Toast de notificacoes
   useToastNotificacao(ultimaDenuncia)
+
+  // Reconciliar visitorId entre browser e PWA (cookie ≠ localStorage)
+  useEffect(() => {
+    reconcileVisitorId().then((changed) => {
+      if (changed) window.location.reload()
+    })
+  }, [])
 
   // Registrar visita unica (analytics)
   useEffect(() => {
