@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getAvatarTier } from '@/lib/avatares'
+import { TODOS_TIERS } from '@/lib/avatares'
 
 interface RankingItem {
   visitorId: string
@@ -18,7 +18,7 @@ interface TestResult {
   mensagem: string
 }
 
-const AVATAR_TIERS = [0, 1, 3, 6, 11, 21]
+// removido — usa TODOS_TIERS de avatares.ts
 
 export default function TestesPage() {
   const [senha, setSenha] = useState('')
@@ -265,21 +265,26 @@ export default function TestesPage() {
 
           {/* 5. Ranking + Avatares */}
           <Section title="5. Ranking + Avatares" emoji="🏆" isDark={isDark}>
+            {/* Seu visitorId */}
+            <div className={`mb-4 p-3 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-blue-50 border border-blue-200'}`}>
+              <p className="text-xs font-semibold mb-1 opacity-70">Seu visitorId (copie para configurar avatar especial):</p>
+              <code className={`text-xs break-all select-all ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+                {typeof window !== 'undefined' ? localStorage.getItem('praia10_visitor') || 'não encontrado' : '...'}
+              </code>
+            </div>
+
             <div className="mb-4">
-              <p className="text-sm font-semibold mb-2 opacity-70">Preview dos tiers:</p>
+              <p className="text-sm font-semibold mb-2 opacity-70">Todos os tiers:</p>
               <div className="grid grid-cols-2 gap-2">
-                {AVATAR_TIERS.map((total) => {
-                  const tier = getAvatarTier(total)
-                  return (
-                    <div key={total} className={`flex items-center gap-2 p-2 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                      <span className="text-2xl">{tier.emoji}</span>
-                      <div>
-                        <p className="text-xs font-bold">{tier.titulo}</p>
-                        <p className="text-[10px] opacity-50">{total}+ contribuições</p>
-                      </div>
+                {TODOS_TIERS.map((tier, i) => (
+                  <div key={i} className={`flex items-center gap-2 p-2 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                    <span className="text-2xl">{tier.emoji}</span>
+                    <div>
+                      <p className="text-xs font-bold">{tier.titulo}</p>
+                      <p className="text-[10px] opacity-50">{tier.total >= 0 ? `${tier.total}+ contribuições` : 'Especial'}</p>
                     </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
             </div>
             <div className="flex gap-2 mb-3">

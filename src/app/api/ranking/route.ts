@@ -36,7 +36,7 @@ export async function GET() {
     const ranking = Array.from(mapa.entries())
       .map(([visitorId, stats]) => {
         const total = stats.denuncias + stats.confirmacoes
-        const tier = getAvatarTier(total)
+        const tier = getAvatarTier(total, visitorId)
         return {
           visitorId,
           avatar: tier.emoji,
