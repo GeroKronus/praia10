@@ -12,8 +12,17 @@ export async function GET(request: Request) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50')))
     const skip = (page - 1) * limit
 
+    // Apenas ativas ou resolvidas (expiradas não aparecem)
+    const where = {
+      OR: [
+        { ativa: true },
+        { resolvidoEm: { not: null } },
+      ],
+    }
+
     const [denuncias, total] = await Promise.all([
       prisma.denuncia.findMany({
+        where,
         select: {
           id: true,
           tipo: true,
@@ -31,7 +40,7 @@ export async function GET(request: Request) {
         skip,
         take: limit,
       }),
-      prisma.denuncia.count(),
+      prisma.denuncia.count({ where }),
     ])
 
     return NextResponse.json({
