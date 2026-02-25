@@ -201,7 +201,6 @@ function MarkerClusterGroup({
           <div style="font-size: 14px; font-weight: bold; margin-bottom: 4px;">
             ${config.emoji} ${config.label}
           </div>
-          ${d.descricao ? `<p style="font-size: 13px; color: #555; margin: 4px 0;">${d.descricao}</p>` : ''}
           ${d.temFoto ? `<button
             onclick="window.__verFoto__('${d.id}')"
             style="

@@ -75,8 +75,8 @@ export default function TimelineFeed({ denuncias, onFlyTo }: TimelineFeedProps) 
                     <span className="text-xl flex-shrink-0">{config.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-gray-700">{config.label}</p>
-                      {d.descricao && (
-                        <p className="text-[10px] text-gray-400 truncate">{d.descricao}</p>
+                      {d.temFoto && (
+                        <p className="text-[10px] text-gray-400">📷 Com foto</p>
                       )}
                     </div>
                     <div className="flex flex-col items-end flex-shrink-0">

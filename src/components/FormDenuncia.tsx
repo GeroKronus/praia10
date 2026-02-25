@@ -13,7 +13,6 @@ interface FormDenunciaProps {
 
 export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }: FormDenunciaProps) {
   const [tipo, setTipo] = useState<TipoDenuncia | null>(null)
-  const [descricao, setDescricao] = useState('')
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [fotoBase64, setFotoBase64] = useState<string | null>(null)
   const [comprimindo, setComprimindo] = useState(false)
@@ -62,7 +61,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
     }
     onSubmit({
       tipo,
-      descricao: descricao.trim() || undefined,
+      descricao: undefined,
       latitude,
       longitude,
       sessionId,
@@ -146,20 +145,6 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
               />
             </label>
           )}
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Descrição (opcional)
-          </label>
-          <textarea
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Descreva o que está acontecendo..."
-            className="w-full p-3 border border-gray-300 rounded-lg resize-none text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows={3}
-            maxLength={500}
-          />
         </div>
 
         <button
