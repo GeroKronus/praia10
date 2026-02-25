@@ -88,13 +88,13 @@ function UserLocation() {
 function BotaoLocalizacao() {
   const map = useMap()
 
-  const centralizar = () => {
+  const centralizar = useCallback(() => {
     navigator.geolocation.getCurrentPosition(
       (pos) => map.flyTo([pos.coords.latitude, pos.coords.longitude], 18),
       () => alert('Não foi possível obter sua localização'),
       { enableHighAccuracy: true }
     )
-  }
+  }, [map])
 
   useEffect(() => {
     const control = new L.Control({ position: 'bottomright' })
@@ -114,7 +114,7 @@ function BotaoLocalizacao() {
     }
     control.addTo(map)
     return () => { control.remove() }
-  }, [map])
+  }, [map, centralizar])
 
   return null
 }
