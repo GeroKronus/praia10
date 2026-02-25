@@ -1,0 +1,188 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { TIPO_CONFIG, TipoDenuncia } from '@/types'
+
+interface DenunciaRow {
+  id: string
+  tipo: string
+  descricao: string | null
+  latitude: number
+  longitude: number
+  confirmacoes: number
+  criadoEm: string
+  ativa: boolean
+  resolvidoEm: string | null
+  resolvidoPor: string | null
+}
+
+interface TabelaDenunciasProps {
+  senha: string
+}
+
+export default function TabelaDenuncias({ senha }: TabelaDenunciasProps) {
+  const [denuncias, setDenuncias] = useState<DenunciaRow[]>([])
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [carregando, setCarregando] = useState(true)
+  const [resolvendo, setResolvendo] = useState<string | null>(null)
+
+  const buscar = useCallback(async () => {
+    setCarregando(true)
+    try {
+      const res = await fetch(`/api/dashboard/denuncias?page=${page}&limit=20`, {
+        headers: { 'x-admin-password': senha },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setDenuncias(data.denuncias)
+        setTotalPages(data.totalPages)
+        setTotal(data.total)
+      }
+    } catch (err) {
+      console.error('Erro ao buscar denúncias:', err)
+    } finally {
+      setCarregando(false)
+    }
+  }, [page, senha])
+
+  useEffect(() => {
+    buscar()
+  }, [buscar])
+
+  const resolver = async (id: string) => {
+    setResolvendo(id)
+    try {
+      const res = await fetch('/api/dashboard/resolver', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': senha,
+        },
+        body: JSON.stringify({ denunciaId: id, resolvidoPor: 'Fiscal' }),
+      })
+      if (res.ok) {
+        setDenuncias((prev) =>
+          prev.map((d) =>
+            d.id === id
+              ? { ...d, resolvidoEm: new Date().toISOString(), resolvidoPor: 'Fiscal' }
+              : d
+          )
+        )
+      }
+    } catch (err) {
+      console.error('Erro ao resolver:', err)
+    } finally {
+      setResolvendo(null)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-600">
+          Denúncias ({total} total)
+        </h3>
+        <button
+          onClick={buscar}
+          className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+        >
+          Atualizar
+        </button>
+      </div>
+
+      {carregando ? (
+        <p className="text-gray-400 text-center py-8">Carregando...</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left">
+                  <th className="pb-3 text-gray-500 font-medium">Tipo</th>
+                  <th className="pb-3 text-gray-500 font-medium">Descrição</th>
+                  <th className="pb-3 text-gray-500 font-medium">Confirmações</th>
+                  <th className="pb-3 text-gray-500 font-medium">Data</th>
+                  <th className="pb-3 text-gray-500 font-medium">Status</th>
+                  <th className="pb-3 text-gray-500 font-medium">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {denuncias.map((d) => {
+                  const config = TIPO_CONFIG[d.tipo as TipoDenuncia]
+                  const resolvido = !!d.resolvidoEm
+                  return (
+                    <tr key={d.id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="py-3">
+                        <span title={config?.label || d.tipo}>
+                          {config?.emoji || '?'} {config?.label || d.tipo}
+                        </span>
+                      </td>
+                      <td className="py-3 text-gray-600 max-w-[200px] truncate">
+                        {d.descricao || '-'}
+                      </td>
+                      <td className="py-3 text-center">{d.confirmacoes}</td>
+                      <td className="py-3 text-gray-500 text-xs whitespace-nowrap">
+                        {new Date(d.criadoEm).toLocaleString('pt-BR')}
+                      </td>
+                      <td className="py-3">
+                        {resolvido ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                            Resolvido
+                          </span>
+                        ) : d.ativa ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            Ativa
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                            Expirada
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3">
+                        {!resolvido && (
+                          <button
+                            onClick={() => resolver(d.id)}
+                            disabled={resolvendo === d.id}
+                            className="px-3 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                          >
+                            {resolvendo === d.id ? '...' : 'Resolver'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Paginação */}
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+            <p className="text-xs text-gray-500">
+              Página {page} de {totalPages}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

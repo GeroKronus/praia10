@@ -18,6 +18,8 @@ export interface Denuncia {
   temFoto: boolean
   confirmacoes: number
   criadoEm: string
+  resolvidoEm: string | null
+  resolvidoPor: string | null
 }
 
 export interface DenunciaCompleta extends Denuncia {
@@ -31,6 +33,17 @@ export interface NovaDenuncia {
   longitude: number
   sessionId: string
   fotoBase64?: string
+}
+
+export interface DashboardStats {
+  totalHoje: number
+  totalSemana: number
+  ativasAgora: number
+  resolvidasHoje: number
+  porTipo: { tipo: string; label: string; total: number; cor: string }[]
+  porHora: { hora: number; total: number }[]
+  porDia: { dia: string; total: number }[]
+  porSetor: { setor: string; total: number }[]
 }
 
 export const TIPO_CONFIG: Record<TipoDenuncia, { label: string; emoji: string; cor: string }> = {

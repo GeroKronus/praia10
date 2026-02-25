@@ -39,6 +39,8 @@ export async function GET(request: Request) {
         fotoBase64: false,
         criadoEm: true,
         ativa: true,
+        resolvidoEm: true,
+        resolvidoPor: true,
       },
       orderBy: { criadoEm: 'desc' },
     })
@@ -94,6 +96,8 @@ export async function POST(request: Request) {
       confirmacoes: denuncia.confirmacoes,
       temFoto: !!denuncia.fotoBase64,
       criadoEm: denuncia.criadoEm,
+      resolvidoEm: denuncia.resolvidoEm,
+      resolvidoPor: denuncia.resolvidoPor,
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

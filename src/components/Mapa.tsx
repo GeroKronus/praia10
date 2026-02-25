@@ -187,14 +187,28 @@ function MarkerClusterGroup({
     })
 
     denuncias.forEach((d) => {
+      const resolvido = !!d.resolvidoEm
       const marker = L.marker([d.latitude, d.longitude], {
-        icon: criarIcone(d.tipo as TipoDenuncia, d.confirmacoes),
+        icon: criarIcone(d.tipo as TipoDenuncia, d.confirmacoes, resolvido),
       })
 
       const config = TIPO_CONFIG[d.tipo as TipoDenuncia]
       const data = new Date(d.criadoEm).toLocaleString('pt-BR')
       const ehMinha = d.sessionId === sessionId.current
       const tempo = tempoRestante(d.criadoEm)
+
+      const resolvidoHtml = resolvido
+        ? `<div style="
+            margin-top: 6px;
+            padding: 4px 8px;
+            background: #27ae60;
+            color: white;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+          ">&#10003; Resolvido${d.resolvidoPor ? ` por ${d.resolvidoPor}` : ''}</div>`
+        : ''
 
       marker.bindPopup(`
         <div style="min-width: 200px;">
@@ -216,9 +230,10 @@ function MarkerClusterGroup({
             "
           >📷 Ver foto</button>` : ''}
           <p style="font-size: 11px; color: #999; margin-top: 6px;">📅 ${data}</p>
-          <p style="font-size: 11px; color: #e67e22; margin-top: 2px;">⏱️ Expira em ${tempo}</p>
+          ${!resolvido ? `<p style="font-size: 11px; color: #e67e22; margin-top: 2px;">⏱️ Expira em ${tempo}</p>` : ''}
           ${d.confirmacoes > 0 ? `<p style="font-size: 11px; color: #3b82f6; margin-top: 2px; font-weight: bold;">👥 ${d.confirmacoes} confirmação${d.confirmacoes > 1 ? 'ões' : ''}</p>` : ''}
-          ${!ehMinha ? `<button
+          ${resolvidoHtml}
+          ${!resolvido && !ehMinha ? `<button
             onclick="window.__confirmarDenuncia__('${d.id}')"
             style="
               margin-top: 8px;
@@ -233,7 +248,7 @@ function MarkerClusterGroup({
               cursor: pointer;
             "
           >👍 Eu também!</button>` : ''}
-          ${ehMinha ? `<button
+          ${!resolvido && ehMinha ? `<button
             onclick="window.__removerDenuncia__('${d.id}')"
             style="
               margin-top: 8px;
@@ -328,10 +343,17 @@ export default function Mapa() {
       )
     })
 
+    socket.on('denuncia-resolvida', ({ id, resolvidoEm, resolvidoPor }: { id: string; resolvidoEm: string; resolvidoPor: string }) => {
+      setDenuncias((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, resolvidoEm, resolvidoPor } : d))
+      )
+    })
+
     return () => {
       socket.off('nova-denuncia')
       socket.off('denuncia-removida')
       socket.off('denuncia-confirmada')
+      socket.off('denuncia-resolvida')
     }
   }, [])
 

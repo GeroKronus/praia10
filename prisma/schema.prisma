@@ -28,6 +28,8 @@ model Denuncia {
   fotoBase64    String?        @db.Text
   confirmacoes  Int            @default(0)
   criadoEm      DateTime       @default(now())
+  resolvidoEm   DateTime?
+  resolvidoPor  String?
   confirmacoesRel Confirmacao[]
 
   @@map("denuncias")
