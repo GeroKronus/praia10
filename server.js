@@ -7,7 +7,7 @@ const { PrismaClient } = require('@prisma/client')
 const dev = process.env.NODE_ENV !== 'production'
 const port = parseInt(process.env.PORT || '3000', 10)
 const hostname = '0.0.0.0'
-const EXPIRACAO_MINUTOS = 5
+const EXPIRACAO_MINUTOS = 10
 
 const prisma = new PrismaClient()
 const app = next({ dev, hostname, port })

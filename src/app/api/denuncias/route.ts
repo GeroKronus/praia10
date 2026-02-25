@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-const EXPIRACAO_MINUTOS = 5
+const EXPIRACAO_MINUTOS = 10
 
 export async function GET(request: Request) {
   try {

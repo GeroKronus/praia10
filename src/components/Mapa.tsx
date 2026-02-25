@@ -19,7 +19,7 @@ import { getSocket } from '@/lib/socket'
 
 const CENTRO_PRAIA_MORRO: L.LatLngExpression = [-20.6478, -40.4928]
 const ZOOM_INICIAL = 16
-const EXPIRACAO_MS = 5 * 60 * 1000
+const EXPIRACAO_MS = 10 * 60 * 1000
 
 function getSessionId(): string {
   let id = sessionStorage.getItem('praia10_session')
