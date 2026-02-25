@@ -14,7 +14,13 @@ export interface Denuncia {
   latitude: number
   longitude: number
   sessionId: string
+  temFoto: boolean
+  confirmacoes: number
   criadoEm: string
+}
+
+export interface DenunciaCompleta extends Denuncia {
+  fotoBase64: string | null
 }
 
 export interface NovaDenuncia {
@@ -23,6 +29,7 @@ export interface NovaDenuncia {
   latitude: number
   longitude: number
   sessionId: string
+  fotoBase64?: string
 }
 
 export const TIPO_CONFIG: Record<TipoDenuncia, { label: string; emoji: string; cor: string }> = {

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import imageCompression from 'browser-image-compression'
 import { TipoDenuncia, TIPO_CONFIG, NovaDenuncia } from '@/types'
 
 interface FormDenunciaProps {
@@ -13,7 +14,43 @@ interface FormDenunciaProps {
 export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }: FormDenunciaProps) {
   const [tipo, setTipo] = useState<TipoDenuncia | null>(null)
   const [descricao, setDescricao] = useState('')
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [fotoBase64, setFotoBase64] = useState<string | null>(null)
+  const [comprimindo, setComprimindo] = useState(false)
   const [enviando, setEnviando] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setComprimindo(true)
+    try {
+      const comprimida = await imageCompression(file, {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+      })
+
+      const reader = new FileReader()
+      reader.onload = () => {
+        const base64 = reader.result as string
+        setFotoPreview(base64)
+        setFotoBase64(base64)
+      }
+      reader.readAsDataURL(comprimida)
+    } catch (err) {
+      console.error('Erro ao comprimir foto:', err)
+    } finally {
+      setComprimindo(false)
+    }
+  }
+
+  const removerFoto = () => {
+    setFotoPreview(null)
+    setFotoBase64(null)
+    if (inputRef.current) inputRef.current.value = ''
+  }
 
   const handleSubmit = async () => {
     if (!tipo) return
@@ -29,6 +66,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
       latitude,
       longitude,
       sessionId,
+      fotoBase64: fotoBase64 || undefined,
     })
   }
 
@@ -70,6 +108,44 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Foto */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Foto (opcional)
+          </label>
+          {fotoPreview ? (
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={fotoPreview}
+                alt="Preview"
+                className="w-full h-40 object-cover rounded-lg"
+              />
+              <button
+                onClick={removerFoto}
+                className="absolute top-2 right-2 bg-black/60 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm"
+              >
+                ×
+              </button>
+            </div>
+          ) : (
+            <label className={`flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors ${comprimindo ? 'opacity-50 pointer-events-none' : ''}`}>
+              <span className="text-2xl">📷</span>
+              <span className="text-sm text-gray-500">
+                {comprimindo ? 'Comprimindo...' : 'Tirar foto ou escolher'}
+              </span>
+              <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFoto}
+                className="hidden"
+              />
+            </label>
+          )}
         </div>
 
         <div className="mb-6">

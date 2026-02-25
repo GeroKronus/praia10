@@ -11,6 +11,10 @@ import 'leaflet.markercluster'
 import { Denuncia, NovaDenuncia, TipoDenuncia, TIPO_CONFIG } from '@/types'
 import { criarIcone } from './IconeDenuncia'
 import FormDenuncia from './FormDenuncia'
+import HeatmapLayer from './HeatmapLayer'
+import PainelSetores from './PainelSetores'
+import TimelineFeed from './TimelineFeed'
+import { ToastProvider, useToastNotificacao } from './ToastNotificacao'
 import { getSocket } from '@/lib/socket'
 
 const CENTRO_PRAIA_MORRO: L.LatLngExpression = [-20.6478, -40.4928]
@@ -129,13 +133,24 @@ function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void
   return null
 }
 
+// Componente FlyTo imperativo
+function FlyToHandler({ target }: { target: { lat: number; lng: number } | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (target) map.flyTo([target.lat, target.lng], 18)
+  }, [target, map])
+  return null
+}
+
 // Componente para MarkerCluster
 function MarkerClusterGroup({
   denuncias,
   onRemover,
+  onConfirmar,
 }: {
   denuncias: Denuncia[]
   onRemover: (id: string) => void
+  onConfirmar: (id: string) => void
 }) {
   const map = useMap()
   const sessionId = useRef(getSessionId())
@@ -173,7 +188,7 @@ function MarkerClusterGroup({
 
     denuncias.forEach((d) => {
       const marker = L.marker([d.latitude, d.longitude], {
-        icon: criarIcone(d.tipo as TipoDenuncia),
+        icon: criarIcone(d.tipo as TipoDenuncia, d.confirmacoes),
       })
 
       const config = TIPO_CONFIG[d.tipo as TipoDenuncia]
@@ -187,12 +202,37 @@ function MarkerClusterGroup({
             ${config.emoji} ${config.label}
           </div>
           ${d.descricao ? `<p style="font-size: 13px; color: #555; margin: 4px 0;">${d.descricao}</p>` : ''}
-          <p style="font-size: 11px; color: #999; margin-top: 6px;">
-            📅 ${data}
-          </p>
-          <p style="font-size: 11px; color: #e67e22; margin-top: 2px;">
-            ⏱️ Expira em ${tempo}
-          </p>
+          ${d.temFoto ? `<button
+            onclick="window.__verFoto__('${d.id}')"
+            style="
+              margin: 6px 0;
+              padding: 4px 10px;
+              background: #3b82f6;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 12px;
+              cursor: pointer;
+            "
+          >📷 Ver foto</button>` : ''}
+          <p style="font-size: 11px; color: #999; margin-top: 6px;">📅 ${data}</p>
+          <p style="font-size: 11px; color: #e67e22; margin-top: 2px;">⏱️ Expira em ${tempo}</p>
+          ${d.confirmacoes > 0 ? `<p style="font-size: 11px; color: #3b82f6; margin-top: 2px; font-weight: bold;">👥 ${d.confirmacoes} confirmação${d.confirmacoes > 1 ? 'ões' : ''}</p>` : ''}
+          ${!ehMinha ? `<button
+            onclick="window.__confirmarDenuncia__('${d.id}')"
+            style="
+              margin-top: 8px;
+              width: 100%;
+              padding: 6px;
+              background: #3b82f6;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 13px;
+              font-weight: bold;
+              cursor: pointer;
+            "
+          >👍 Eu também!</button>` : ''}
           ${ehMinha ? `<button
             onclick="window.__removerDenuncia__('${d.id}')"
             style="
@@ -215,23 +255,39 @@ function MarkerClusterGroup({
     })
 
     map.addLayer(cluster)
-
-    return () => {
-      map.removeLayer(cluster)
-    }
+    return () => { map.removeLayer(cluster) }
   }, [denuncias, map])
 
-  // Expor função global para o botão no popup
+  // Expor funções globais para os botões nos popups
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(window as any).__removerDenuncia__ = (id: string) => {
-      onRemover(id)
+    ;(window as any).__removerDenuncia__ = (id: string) => onRemover(id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__confirmarDenuncia__ = (id: string) => onConfirmar(id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__verFoto__ = async (id: string) => {
+      try {
+        const res = await fetch(`/api/denuncias?fotoId=${id}`)
+        const data = await res.json()
+        if (data.fotoBase64) {
+          const win = window.open()
+          if (win) {
+            win.document.write(`<img src="${data.fotoBase64}" style="max-width:100%;max-height:100vh;margin:auto;display:block;" />`)
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao carregar foto:', err)
+      }
     }
     return () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (window as any).__removerDenuncia__
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).__confirmarDenuncia__
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).__verFoto__
     }
-  }, [onRemover])
+  }, [onRemover, onConfirmar])
 
   return null
 }
@@ -241,6 +297,12 @@ export default function Mapa() {
   const [formAberto, setFormAberto] = useState(false)
   const [pontoClicado, setPontoClicado] = useState<{ lat: number; lng: number } | null>(null)
   const [carregando, setCarregando] = useState(true)
+  const [mostrarHeatmap, setMostrarHeatmap] = useState(false)
+  const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null)
+  const [ultimaDenuncia, setUltimaDenuncia] = useState<Denuncia | null>(null)
+
+  // Toast de notificações
+  useToastNotificacao(ultimaDenuncia)
 
   // Buscar denúncias existentes
   useEffect(() => {
@@ -257,29 +319,32 @@ export default function Mapa() {
   useEffect(() => {
     const socket = getSocket()
 
-    socket.on('connect', () => {
-      console.log('Socket.io conectado:', socket.id)
-    })
-
     socket.on('nova-denuncia', (denuncia: Denuncia) => {
       setDenuncias((prev) => {
         if (prev.some((d) => d.id === denuncia.id)) return prev
         return [denuncia, ...prev]
       })
+      setUltimaDenuncia(denuncia)
     })
 
     socket.on('denuncia-removida', ({ id }: { id: string }) => {
       setDenuncias((prev) => prev.filter((d) => d.id !== id))
     })
 
+    socket.on('denuncia-confirmada', ({ id, confirmacoes }: { id: string; confirmacoes: number }) => {
+      setDenuncias((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, confirmacoes } : d))
+      )
+    })
+
     return () => {
-      socket.off('connect')
       socket.off('nova-denuncia')
       socket.off('denuncia-removida')
+      socket.off('denuncia-confirmada')
     }
   }, [])
 
-  // Timer local para remover denúncias expiradas do estado e forçar re-render dos tempos
+  // Timer local para remover denúncias expiradas
   useEffect(() => {
     const interval = setInterval(() => {
       setDenuncias((prev) => {
@@ -320,11 +385,27 @@ export default function Mapa() {
         method: 'DELETE',
       })
       if (res.ok) {
-        // Remoção otimista local (socket também vai notificar)
         setDenuncias((prev) => prev.filter((d) => d.id !== id))
       }
     } catch (error) {
       console.error('Erro ao remover denúncia:', error)
+    }
+  }, [])
+
+  const handleConfirmar = useCallback(async (id: string) => {
+    const sessionId = getSessionId()
+    try {
+      const res = await fetch('/api/denuncias/confirmar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ denunciaId: id, sessionId }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.error || 'Erro ao confirmar')
+      }
+    } catch (error) {
+      console.error('Erro ao confirmar denúncia:', error)
     }
   }, [])
 
@@ -333,8 +414,14 @@ export default function Mapa() {
     setPontoClicado(null)
   }
 
+  const handleFlyTo = useCallback((lat: number, lng: number) => {
+    setFlyToTarget({ lat, lng })
+  }, [])
+
   return (
     <div className="relative w-full h-full">
+      <ToastProvider />
+
       {carregando && (
         <div className="absolute inset-0 z-[999] flex items-center justify-center bg-white/80">
           <div className="text-lg font-semibold text-gray-600">Carregando mapa...</div>
@@ -352,24 +439,52 @@ export default function Mapa() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ClickHandler onClick={handleMapClick} />
-        <MarkerClusterGroup denuncias={denuncias} onRemover={handleRemover} />
+        {!mostrarHeatmap && (
+          <MarkerClusterGroup
+            denuncias={denuncias}
+            onRemover={handleRemover}
+            onConfirmar={handleConfirmar}
+          />
+        )}
+        <HeatmapLayer denuncias={denuncias} visivel={mostrarHeatmap} />
         <UserLocation />
         <BotaoLocalizacao />
+        <FlyToHandler target={flyToTarget} />
       </MapContainer>
 
-      {/* Contador de denúncias */}
-      <div className="absolute top-4 right-4 z-[500] bg-white rounded-lg shadow-lg px-4 py-2">
-        <span className="text-sm font-medium text-gray-600">
-          {denuncias.length} denúncia{denuncias.length !== 1 ? 's' : ''}
-        </span>
+      {/* Contador de denúncias + toggle heatmap */}
+      <div className="absolute top-4 right-4 z-[500] flex items-center gap-2">
+        <button
+          onClick={() => setMostrarHeatmap(!mostrarHeatmap)}
+          className={`rounded-lg shadow-lg px-3 py-2 text-xs font-semibold transition-colors ${
+            mostrarHeatmap
+              ? 'bg-orange-500 text-white'
+              : 'bg-white text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          🔥 {mostrarHeatmap ? 'Marcadores' : 'Heatmap'}
+        </button>
+        <div className="bg-white rounded-lg shadow-lg px-4 py-2">
+          <span className="text-sm font-medium text-gray-600">
+            {denuncias.length} denúncia{denuncias.length !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
 
+      {/* Timeline */}
+      <TimelineFeed denuncias={denuncias} onFlyTo={handleFlyTo} />
+
+      {/* Setores */}
+      <PainelSetores denuncias={denuncias} />
+
       {/* Instrução */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] bg-white/90 backdrop-blur rounded-full shadow-lg px-6 py-3 pointer-events-none">
-        <span className="text-sm font-medium text-gray-600">
-          Toque no mapa para fazer uma denúncia
-        </span>
-      </div>
+      {!formAberto && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] bg-white/90 backdrop-blur rounded-full shadow-lg px-6 py-3 pointer-events-none">
+          <span className="text-sm font-medium text-gray-600">
+            Toque no mapa para fazer uma denúncia
+          </span>
+        </div>
+      )}
 
       {/* Formulário */}
       {formAberto && pontoClicado && (

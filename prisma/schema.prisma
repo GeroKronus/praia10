@@ -17,14 +17,28 @@ enum TipoDenuncia {
 }
 
 model Denuncia {
-  id        String        @id @default(uuid())
-  tipo      TipoDenuncia
-  descricao String?
-  latitude  Float
-  longitude Float
-  sessionId String
-  ativa     Boolean       @default(true)
-  criadoEm  DateTime      @default(now())
+  id            String         @id @default(uuid())
+  tipo          TipoDenuncia
+  descricao     String?
+  latitude      Float
+  longitude     Float
+  sessionId     String
+  ativa         Boolean        @default(true)
+  fotoBase64    String?        @db.Text
+  confirmacoes  Int            @default(0)
+  criadoEm      DateTime       @default(now())
+  confirmacoesRel Confirmacao[]
 
   @@map("denuncias")
+}
+
+model Confirmacao {
+  id         String   @id @default(uuid())
+  denunciaId String
+  sessionId  String
+  criadoEm   DateTime @default(now())
+  denuncia   Denuncia @relation(fields: [denunciaId], references: [id])
+
+  @@unique([denunciaId, sessionId])
+  @@map("confirmacoes")
 }
