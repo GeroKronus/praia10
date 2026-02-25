@@ -63,11 +63,13 @@ function tempoRestante(criadoEm: string, tipo: string): string {
   return `${min}:${seg.toString().padStart(2, '0')}`
 }
 
-// Componente de localizacao do usuario
+// Componente de localizacao do usuario (marca bolinha azul + centraliza na 1a posicao)
 function UserLocation() {
   const map = useMap()
   const markerRef = useRef<L.CircleMarker | null>(null)
   const circleRef = useRef<L.Circle | null>(null)
+  const centeredRef = useRef(false)
+
   useEffect(() => {
     if (!navigator.geolocation) return
 
@@ -75,6 +77,12 @@ function UserLocation() {
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords
         const latlng: L.LatLngExpression = [latitude, longitude]
+
+        // Centralizar no usuario na primeira posicao obtida
+        if (!centeredRef.current) {
+          centeredRef.current = true
+          map.flyTo(latlng, 17)
+        }
 
         if (markerRef.current) {
           markerRef.current.setLatLng(latlng)
@@ -572,6 +580,10 @@ export default function Mapa() {
       <div className="absolute top-3 left-3 right-3 z-[500] pointer-events-none">
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-1 gap-0.5 pointer-events-auto">
+            <div className="flex items-center gap-1 px-2 py-1 border-r border-gray-200 mr-0.5">
+              <span className="text-base">🏖️</span>
+              <span className="text-xs font-bold text-gray-800 leading-tight">Praia10</span>
+            </div>
             <button
               onClick={() => togglePainel('utilidades')}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
@@ -641,9 +653,9 @@ export default function Mapa() {
 
       {/* Instrucao */}
       {!formAberto && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] bg-white/90 backdrop-blur rounded-full shadow-md px-5 py-2.5 pointer-events-none">
-          <span className="text-xs font-semibold text-gray-500">
-            Toque e denuncie
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[600] bg-white/95 backdrop-blur rounded-full shadow-lg px-5 py-2.5 pointer-events-none">
+          <span className="text-xs font-semibold text-gray-600">
+            Toque no mapa e denuncie
           </span>
         </div>
       )}
