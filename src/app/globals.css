@@ -11,6 +11,14 @@
 html, body {
   height: 100%;
   width: 100%;
+}
+
+/* Mapa precisa de overflow hidden, dashboard precisa de scroll */
+body:has(.dashboard-page) {
+  overflow: auto;
+}
+
+body:not(:has(.dashboard-page)) {
   overflow: hidden;
 }
 
