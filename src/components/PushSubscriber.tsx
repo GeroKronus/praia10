@@ -13,19 +13,39 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray
 }
 
+function isIOS(): boolean {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+}
+
+function isStandalone(): boolean {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || ('standalone' in navigator && (navigator as unknown as { standalone: boolean }).standalone === true)
+}
+
+type PushState = 'loading' | 'unsupported' | 'ios-needs-install' | 'default' | 'granted' | 'denied'
+
 export default function PushSubscriber() {
-  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('unsupported')
+  const [state, setState] = useState<PushState>('loading')
+  const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
+    // iOS sem PWA instalada: Notification API não existe
+    if (isIOS() && !isStandalone()) {
+      setState('ios-needs-install')
+      return
+    }
+
     if ('Notification' in window && 'serviceWorker' in navigator) {
-      setPermission(Notification.permission)
+      setState(Notification.permission as PushState)
+    } else {
+      setState('unsupported')
     }
   }, [])
 
   const handleSubscribe = async () => {
     try {
       const perm = await Notification.requestPermission()
-      setPermission(perm)
+      setState(perm as PushState)
       if (perm !== 'granted') return
 
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
@@ -70,8 +90,24 @@ export default function PushSubscriber() {
     }
   }
 
-  if (permission !== 'default') return null
+  if (dismissed || state === 'loading' || state === 'unsupported' || state === 'granted' || state === 'denied') return null
 
+  // iOS sem PWA: mostrar dica de instalação
+  if (state === 'ios-needs-install') {
+    return (
+      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[500] bg-white text-gray-800 px-4 py-3 rounded-2xl shadow-lg text-xs max-w-[280px] text-center">
+        <button onClick={() => setDismissed(true)} className="absolute top-1 right-2 text-gray-400 text-base">×</button>
+        <p className="font-semibold mb-1">Receba alertas em tempo real!</p>
+        <p className="text-gray-500">
+          Toque em <span className="inline-block align-middle text-blue-600">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </span> e depois <strong>&quot;Tela de Início&quot;</strong> para instalar o app e ativar notificações.
+        </p>
+      </div>
+    )
+  }
+
+  // Navegador com suporte: botão para ativar
   return (
     <button
       onClick={handleSubscribe}
