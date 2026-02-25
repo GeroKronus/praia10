@@ -55,3 +55,24 @@ model Visita {
   @@unique([visitorId, data])
   @@map("visitas")
 }
+
+enum TipoPOI {
+  QUIOSQUE
+  SALVA_VIDAS
+  POLICIA
+  BANHEIRO
+  CHUVEIRO
+  ESTACIONAMENTO
+  INFORMACAO
+}
+
+model POI {
+  id          String   @id @default(uuid())
+  tipo        TipoPOI
+  nome        String?
+  descricao   String?
+  latitude    Float
+  longitude   Float
+  criadoEm    DateTime @default(now())
+  @@map("pois")
+}

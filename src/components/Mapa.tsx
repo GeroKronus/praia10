@@ -8,8 +8,9 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
 
-import { Denuncia, NovaDenuncia, TipoDenuncia, TIPO_CONFIG } from '@/types'
+import { Denuncia, NovaDenuncia, TipoDenuncia, TIPO_CONFIG, POI, TipoPOI, POI_CONFIG } from '@/types'
 import { criarIcone } from './IconeDenuncia'
+import { criarIconePOI } from './IconePOI'
 import FormDenuncia from './FormDenuncia'
 import HeatmapLayer from './HeatmapLayer'
 import PainelSetores from './PainelSetores'
@@ -299,8 +300,47 @@ function MarkerClusterGroup({
   return null
 }
 
+// Componente para POIs no mapa público
+function POIMarkersPublic({ pois }: { pois: POI[] }) {
+  const map = useMap()
+  const markersRef = useRef<L.Marker[]>([])
+
+  useEffect(() => {
+    markersRef.current.forEach((m) => m.remove())
+    markersRef.current = []
+
+    pois.forEach((poi) => {
+      const config = POI_CONFIG[poi.tipo as TipoPOI]
+      const marker = L.marker([poi.latitude, poi.longitude], {
+        icon: criarIconePOI(poi.tipo as TipoPOI),
+      })
+
+      marker.bindPopup(`
+        <div style="min-width: 160px;">
+          <div style="font-size: 14px; font-weight: bold; margin-bottom: 2px;">
+            ${config.emoji} ${poi.nome || config.label}
+          </div>
+          ${poi.descricao ? `<p style="font-size: 12px; color: #555; margin: 4px 0;">${poi.descricao}</p>` : ''}
+          <p style="font-size: 11px; color: ${config.cor}; font-weight: 600;">${config.label}</p>
+        </div>
+      `)
+
+      marker.addTo(map)
+      markersRef.current.push(marker)
+    })
+
+    return () => {
+      markersRef.current.forEach((m) => m.remove())
+      markersRef.current = []
+    }
+  }, [pois, map])
+
+  return null
+}
+
 export default function Mapa() {
   const [denuncias, setDenuncias] = useState<Denuncia[]>([])
+  const [pois, setPois] = useState<POI[]>([])
   const [formAberto, setFormAberto] = useState(false)
   const [pontoClicado, setPontoClicado] = useState<{ lat: number; lng: number } | null>(null)
   const [carregando, setCarregando] = useState(true)
@@ -327,6 +367,16 @@ export default function Mapa() {
       })
       .catch(console.error)
       .finally(() => setCarregando(false))
+  }, [])
+
+  // Buscar POIs
+  useEffect(() => {
+    fetch('/api/pois')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setPois(data)
+      })
+      .catch(console.error)
   }, [])
 
   // Conectar Socket.io para tempo real
@@ -357,11 +407,24 @@ export default function Mapa() {
       )
     })
 
+    socket.on('novo-poi', (poi: POI) => {
+      setPois((prev) => {
+        if (prev.some((p) => p.id === poi.id)) return prev
+        return [poi, ...prev]
+      })
+    })
+
+    socket.on('poi-removido', ({ id }: { id: string }) => {
+      setPois((prev) => prev.filter((p) => p.id !== id))
+    })
+
     return () => {
       socket.off('nova-denuncia')
       socket.off('denuncia-removida')
       socket.off('denuncia-confirmada')
       socket.off('denuncia-resolvida')
+      socket.off('novo-poi')
+      socket.off('poi-removido')
     }
   }, [])
 
@@ -490,6 +553,7 @@ export default function Mapa() {
           />
         )}
         <HeatmapLayer denuncias={denuncias} visivel={mostrarHeatmap} />
+        <POIMarkersPublic pois={pois} />
         <UserLocation />
         <FlyToHandler target={flyToTarget} />
       </MapContainer>

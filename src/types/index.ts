@@ -57,3 +57,34 @@ export const TIPO_CONFIG: Record<TipoDenuncia, { label: string; emoji: string; c
   [TipoDenuncia.CRIANCA_PERDIDA]: { label: 'Criança Perdida', emoji: '👶', cor: '#e84393' },
   [TipoDenuncia.OUTROS]: { label: 'Outros', emoji: '⚠️', cor: '#95a5a6' },
 }
+
+// POIs (Pontos de Interesse)
+export enum TipoPOI {
+  QUIOSQUE = 'QUIOSQUE',
+  SALVA_VIDAS = 'SALVA_VIDAS',
+  POLICIA = 'POLICIA',
+  BANHEIRO = 'BANHEIRO',
+  CHUVEIRO = 'CHUVEIRO',
+  ESTACIONAMENTO = 'ESTACIONAMENTO',
+  INFORMACAO = 'INFORMACAO',
+}
+
+export const POI_CONFIG: Record<TipoPOI, { label: string; emoji: string; cor: string }> = {
+  [TipoPOI.QUIOSQUE]: { label: 'Quiosque', emoji: '🏪', cor: '#e67e22' },
+  [TipoPOI.SALVA_VIDAS]: { label: 'Salva-vidas', emoji: '🏊', cor: '#e74c3c' },
+  [TipoPOI.POLICIA]: { label: 'Polícia', emoji: '🚔', cor: '#2c3e50' },
+  [TipoPOI.BANHEIRO]: { label: 'Banheiro', emoji: '🚻', cor: '#27ae60' },
+  [TipoPOI.CHUVEIRO]: { label: 'Chuveiro', emoji: '🚿', cor: '#00bcd4' },
+  [TipoPOI.ESTACIONAMENTO]: { label: 'Estacionamento', emoji: '🅿️', cor: '#7f8c8d' },
+  [TipoPOI.INFORMACAO]: { label: 'Informação', emoji: 'ℹ️', cor: '#3498db' },
+}
+
+export interface POI {
+  id: string
+  tipo: TipoPOI
+  nome: string | null
+  descricao: string | null
+  latitude: number
+  longitude: number
+  criadoEm: string
+}
