@@ -44,7 +44,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
         <div className="flex justify-between items-center mb-3">
           <div>
             <h2 className="text-lg font-bold text-gray-800">Nova Denúncia</h2>
-            <p className="text-[10px] text-gray-400">Clique no local correto da denúncia</p>
+            <p className="text-[10px] text-gray-400">Clique no local correto no mapa</p>
           </div>
           <button
             onClick={onClose}
