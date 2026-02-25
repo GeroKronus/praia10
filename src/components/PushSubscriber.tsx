@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getVisitorId } from '@/lib/visitor'
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -58,7 +59,7 @@ export default function PushSubscriber() {
       })
 
       const json = subscription.toJSON()
-      const visitorId = localStorage.getItem('praia10_visitor') || ''
+      const visitorId = getVisitorId()
 
       // Obter localização para filtro por raio
       let latitude: number | undefined

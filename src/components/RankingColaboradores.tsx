@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { getVisitorId } from '@/lib/visitor'
 
 interface RankingItem {
   visitorId: string
@@ -19,7 +20,7 @@ export default function RankingColaboradores({ onClose }: { onClose: () => void 
   const [meuVisitorId, setMeuVisitorId] = useState<string | null>(null)
 
   useEffect(() => {
-    setMeuVisitorId(localStorage.getItem('praia10_visitor'))
+    setMeuVisitorId(getVisitorId())
     fetch('/api/ranking')
       .then((res) => res.json())
       .then((data) => {

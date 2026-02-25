@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { TipoDenuncia, TIPO_CONFIG, NovaDenuncia, Denuncia } from '@/types'
+import { getVisitorId } from '@/lib/visitor'
 import { useFotoUpload } from '@/hooks/useFotoUpload'
 import FotoUploadInput from './FotoUploadInput'
 import { calcularDistancia, formatarDistancia } from '@/lib/distancia'
@@ -45,7 +46,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose, d
       sessionId = crypto.randomUUID()
       sessionStorage.setItem('praia10_session', sessionId)
     }
-    const visitorId = localStorage.getItem('praia10_visitor') || undefined
+    const visitorId = getVisitorId()
     onSubmit({
       tipo,
       descricao: descricao.trim() || undefined,

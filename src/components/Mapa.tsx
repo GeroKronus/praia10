@@ -23,6 +23,7 @@ import { ToastProvider, useToastNotificacao } from './ToastNotificacao'
 import { getSocket } from '@/lib/socket'
 import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, TIPOS_EXPIRACAO_LONGA, CENTRO_PRAIA_MORRO } from '@/lib/constants'
 import { getAvatarTier } from '@/lib/avatares'
+import { getVisitorId } from '@/lib/visitor'
 import { useFotoModal } from '@/hooks/useFotoModal'
 import { useWindowFunction } from '@/hooks/useWindowFunction'
 
@@ -41,15 +42,6 @@ function getSessionId(): string {
   if (!id) {
     id = crypto.randomUUID()
     sessionStorage.setItem('praia10_session', id)
-  }
-  return id
-}
-
-function getVisitorId(): string {
-  let id = localStorage.getItem('praia10_visitor')
-  if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem('praia10_visitor', id)
   }
   return id
 }
@@ -645,7 +637,7 @@ export default function Mapa() {
 
   const handleConfirmar = useCallback(async (id: string) => {
     const sessionId = getSessionId()
-    const visitorId = localStorage.getItem('praia10_visitor') || undefined
+    const visitorId = getVisitorId()
     try {
       const res = await fetch('/api/denuncias/confirmar', {
         method: 'POST',

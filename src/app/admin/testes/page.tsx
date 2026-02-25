@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { TODOS_TIERS } from '@/lib/avatares'
+import { getVisitorId } from '@/lib/visitor'
 
 interface RankingItem {
   visitorId: string
@@ -100,7 +101,7 @@ export default function TestesPage() {
       const res = await fetch('/api/denuncias/fake', {
         method: 'POST',
         headers: adminHeaders,
-        body: JSON.stringify({ quantidade: qtd, visitorId: localStorage.getItem('praia10_visitor') }),
+        body: JSON.stringify({ quantidade: qtd, visitorId: getVisitorId() }),
       })
       const data = await res.json()
       if (res.ok) {
@@ -269,7 +270,7 @@ export default function TestesPage() {
             <div className={`mb-4 p-3 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-blue-50 border border-blue-200'}`}>
               <p className="text-xs font-semibold mb-1 opacity-70">Seu visitorId (copie para configurar avatar especial):</p>
               <code className={`text-xs break-all select-all ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
-                {typeof window !== 'undefined' ? localStorage.getItem('praia10_visitor') || 'não encontrado' : '...'}
+                {typeof window !== 'undefined' ? getVisitorId() || 'não encontrado' : '...'}
               </code>
             </div>
 
@@ -302,7 +303,7 @@ export default function TestesPage() {
                 </div>
                 {ranking.map((r, i) => {
                   const medals = ['🥇', '🥈', '🥉']
-                  const isMe = r.visitorId === (typeof window !== 'undefined' ? localStorage.getItem('praia10_visitor') : null)
+                  const isMe = r.visitorId === (typeof window !== 'undefined' ? getVisitorId() : null)
                   return (
                     <div key={r.visitorId} className={`flex items-center gap-2 px-3 py-2 border-t ${isDark ? 'border-gray-600' : 'border-gray-100'} ${isMe ? (isDark ? 'bg-blue-900/30' : 'bg-blue-50') : ''}`}>
                       <span className="w-5 text-center text-sm">{i < 3 ? medals[i] : i + 1}</span>
