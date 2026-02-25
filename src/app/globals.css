@@ -28,6 +28,15 @@ html:has(.admin-testes-page) body {
   overflow-x: hidden;
 }
 
+/* Toolbar: scroll horizontal sem scrollbar visível */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Leaflet overrides */
 .leaflet-container {
   width: 100%;
