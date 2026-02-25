@@ -64,6 +64,7 @@ enum TipoPOI {
   CHUVEIRO
   ESTACIONAMENTO
   INFORMACAO
+  EVENTO
 }
 
 model POI {
