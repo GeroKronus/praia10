@@ -110,39 +110,20 @@ function UserLocation() {
   return null
 }
 
-// Botão para centralizar na localização do usuário
-function BotaoLocalizacao() {
-  const map = useMap()
-
-  const centralizar = useCallback(() => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => map.flyTo([pos.coords.latitude, pos.coords.longitude], 18),
-      () => alert('Não foi possível obter sua localização'),
-      { enableHighAccuracy: true }
-    )
-  }, [map])
-
-  useEffect(() => {
-    const control = new L.Control({ position: 'topright' })
-    control.onAdd = () => {
-      const btn = L.DomUtil.create('button', 'leaflet-bar')
-      btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+// Botão para centralizar na localização do usuário (renderizado fora do mapa)
+function BotaoLocalizacao({ onCentralizar }: { onCentralizar: () => void }) {
+  return (
+    <button
+      onClick={onCentralizar}
+      className="absolute top-14 right-4 z-[500] w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-lg cursor-pointer"
+      title="Minha localização"
+    >
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3"/>
         <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
-      </svg>`
-      btn.style.cssText = 'width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:white;cursor:pointer;border-radius:8px;margin-top:48px;'
-      btn.title = 'Minha localização'
-      btn.onclick = (e) => {
-        e.stopPropagation()
-        centralizar()
-      }
-      return btn
-    }
-    control.addTo(map)
-    return () => { control.remove() }
-  }, [map, centralizar])
-
-  return null
+      </svg>
+    </button>
+  )
 }
 
 // Componente para capturar cliques no mapa
@@ -510,9 +491,17 @@ export default function Mapa() {
         )}
         <HeatmapLayer denuncias={denuncias} visivel={mostrarHeatmap} />
         <UserLocation />
-        <BotaoLocalizacao />
         <FlyToHandler target={flyToTarget} />
       </MapContainer>
+
+      {/* Botão localização */}
+      <BotaoLocalizacao onCentralizar={() => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => setFlyToTarget({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => alert('Não foi possível obter sua localização'),
+          { enableHighAccuracy: true }
+        )
+      }} />
 
       {/* Toggle heatmap */}
       <div className="absolute top-4 right-4 z-[500]">
