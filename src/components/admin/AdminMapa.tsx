@@ -184,6 +184,7 @@ const FOTO_ENDPOINTS_ADMIN = [
 export default function AdminMapa({ senha }: { senha: string }) {
   const [pois, setPois] = useState<POI[]>([])
   const [denuncias, setDenuncias] = useState<Denuncia[]>([])
+  const [filtro, setFiltro] = useState<'tudo' | 'pois' | 'denuncias'>('tudo')
   const [formAberto, setFormAberto] = useState(false)
   const [pontoClicado, setPontoClicado] = useState<{ lat: number; lng: number } | null>(null)
 
@@ -324,7 +325,22 @@ export default function AdminMapa({ senha }: { senha: string }) {
           <h1 className="text-sm font-bold text-gray-800">Admin Mapa</h1>
           <span className="text-xs text-gray-500">({pois.length} POIs, {denuncias.length} denúncias)</span>
         </div>
-        <a href="/" className="text-xs text-blue-600 hover:underline">Voltar ao mapa</a>
+        <div className="flex items-center gap-2">
+          {(['tudo', 'pois', 'denuncias'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFiltro(f)}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                filtro === f
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              }`}
+            >
+              {f === 'tudo' ? 'Tudo' : f === 'pois' ? 'POIs' : 'Denúncias'}
+            </button>
+          ))}
+          <a href="/" className="text-xs text-blue-600 hover:underline ml-1">Voltar</a>
+        </div>
       </div>
 
       <MapContainer
@@ -338,8 +354,8 @@ export default function AdminMapa({ senha }: { senha: string }) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ClickHandler onClick={handleMapClick} />
-        <POIMarkers pois={pois} onExcluir={handleExcluir} />
-        <DenunciaMarkersAdmin denuncias={denuncias} onExcluir={handleExcluirDenuncia} />
+        {filtro !== 'denuncias' && <POIMarkers pois={pois} onExcluir={handleExcluir} />}
+        {filtro !== 'pois' && <DenunciaMarkersAdmin denuncias={denuncias} onExcluir={handleExcluirDenuncia} />}
       </MapContainer>
 
       {!formAberto && (
