@@ -95,7 +95,7 @@ export default function PushSubscriber() {
   // iOS sem PWA: mostrar dica de instalação
   if (state === 'ios-needs-install') {
     return (
-      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[500] bg-white text-gray-800 px-4 py-3 rounded-2xl shadow-lg text-xs max-w-[280px] text-center">
+      <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-[500] bg-white text-gray-800 px-4 py-3 rounded-2xl shadow-lg text-xs max-w-[280px] text-center">
         <button onClick={() => setDismissed(true)} className="absolute top-1 right-2 text-gray-400 text-base">×</button>
         <p className="font-semibold mb-1">Receba alertas em tempo real!</p>
         <p className="text-gray-500">
@@ -111,7 +111,7 @@ export default function PushSubscriber() {
   return (
     <button
       onClick={handleSubscribe}
-      className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[500] bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg text-xs font-semibold flex items-center gap-1.5"
+      className="absolute bottom-36 left-1/2 -translate-x-1/2 z-[500] bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg text-xs font-semibold flex items-center gap-1.5"
     >
       <span>🔔</span>
       <span>Ativar notificações</span>
