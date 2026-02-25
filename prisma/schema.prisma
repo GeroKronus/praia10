@@ -65,6 +65,7 @@ enum TipoPOI {
   ESTACIONAMENTO
   INFORMACAO
   EVENTO
+  ENTIDADE
 }
 
 model POI {

@@ -68,6 +68,7 @@ export enum TipoPOI {
   ESTACIONAMENTO = 'ESTACIONAMENTO',
   INFORMACAO = 'INFORMACAO',
   EVENTO = 'EVENTO',
+  ENTIDADE = 'ENTIDADE',
 }
 
 export const POI_CONFIG: Record<TipoPOI, { label: string; emoji: string; cor: string }> = {
@@ -79,6 +80,7 @@ export const POI_CONFIG: Record<TipoPOI, { label: string; emoji: string; cor: st
   [TipoPOI.ESTACIONAMENTO]: { label: 'Estacionamento', emoji: '🅿️', cor: '#7f8c8d' },
   [TipoPOI.INFORMACAO]: { label: 'Informação', emoji: 'ℹ️', cor: '#3498db' },
   [TipoPOI.EVENTO]: { label: 'Evento', emoji: '🎉', cor: '#9b59b6' },
+  [TipoPOI.ENTIDADE]: { label: 'Entidade', emoji: '🏛️', cor: '#1abc9c' },
 }
 
 export interface POI {
