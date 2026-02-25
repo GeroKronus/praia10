@@ -13,6 +13,7 @@ interface FormDenunciaProps {
 
 export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }: FormDenunciaProps) {
   const [tipo, setTipo] = useState<TipoDenuncia | null>(null)
+  const [descricao, setDescricao] = useState('')
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [fotoBase64, setFotoBase64] = useState<string | null>(null)
   const [comprimindo, setComprimindo] = useState(false)
@@ -61,7 +62,7 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
     }
     onSubmit({
       tipo,
-      descricao: undefined,
+      descricao: descricao.trim() || undefined,
       latitude,
       longitude,
       sessionId,
@@ -72,9 +73,10 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
   return (
     <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md mx-auto p-6 max-h-[85vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Nova Denúncia</h2>
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md mx-auto p-4 sm:p-5">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-lg font-bold text-gray-800">Nova Denúncia</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
@@ -83,74 +85,77 @@ export default function FormDenuncia({ latitude, longitude, onSubmit, onClose }:
           </button>
         </div>
 
-        <p className="text-sm text-gray-500 mb-4">
-          📍 {latitude.toFixed(5)}, {longitude.toFixed(5)}
-        </p>
+        {/* Tipo — botões compactos em 3 colunas */}
+        <div className="grid grid-cols-3 gap-1.5 mb-3">
+          {Object.entries(TIPO_CONFIG).map(([key, config]) => (
+            <button
+              key={key}
+              onClick={() => setTipo(key as TipoDenuncia)}
+              className={`flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg border-2 transition-all ${
+                tipo === key
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <span className="text-xl">{config.emoji}</span>
+              <span className="text-[10px] font-medium text-gray-600 leading-tight text-center">{config.label}</span>
+            </button>
+          ))}
+        </div>
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Tipo da ocorrência
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {Object.entries(TIPO_CONFIG).map(([key, config]) => (
-              <button
-                key={key}
-                onClick={() => setTipo(key as TipoDenuncia)}
-                className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left ${
-                  tipo === key
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <span className="text-2xl">{config.emoji}</span>
-                <span className="text-sm font-medium text-gray-700">{config.label}</span>
-              </button>
-            ))}
+        {/* Foto + Descrição lado a lado */}
+        <div className="flex gap-2 mb-3">
+          {/* Foto */}
+          <div className="w-24 flex-shrink-0">
+            {fotoPreview ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={fotoPreview}
+                  alt="Preview"
+                  className="w-24 h-[72px] object-cover rounded-lg"
+                />
+                <button
+                  onClick={removerFoto}
+                  className="absolute -top-1.5 -right-1.5 bg-black/60 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <label className={`flex flex-col items-center justify-center h-[72px] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors ${comprimindo ? 'opacity-50 pointer-events-none' : ''}`}>
+                <span className="text-xl">📷</span>
+                <span className="text-[9px] text-gray-400">
+                  {comprimindo ? 'Comprimindo' : 'Foto'}
+                </span>
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFoto}
+                  className="hidden"
+                />
+              </label>
+            )}
           </div>
+
+          {/* Descrição */}
+          <textarea
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            placeholder="O que está acontecendo? (opcional)"
+            className="flex-1 p-2 border border-gray-300 rounded-lg resize-none text-sm text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={2}
+            maxLength={200}
+          />
         </div>
 
-        {/* Foto */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Foto (opcional)
-          </label>
-          {fotoPreview ? (
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={fotoPreview}
-                alt="Preview"
-                className="w-full h-40 object-cover rounded-lg"
-              />
-              <button
-                onClick={removerFoto}
-                className="absolute top-2 right-2 bg-black/60 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm"
-              >
-                ×
-              </button>
-            </div>
-          ) : (
-            <label className={`flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors ${comprimindo ? 'opacity-50 pointer-events-none' : ''}`}>
-              <span className="text-2xl">📷</span>
-              <span className="text-sm text-gray-500">
-                {comprimindo ? 'Comprimindo...' : 'Tirar foto ou escolher'}
-              </span>
-              <input
-                ref={inputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFoto}
-                className="hidden"
-              />
-            </label>
-          )}
-        </div>
-
+        {/* Botão enviar */}
         <button
           onClick={handleSubmit}
           disabled={!tipo || enviando}
-          className={`w-full py-3 rounded-lg font-semibold text-white transition-all ${
+          className={`w-full py-2.5 rounded-lg font-semibold text-white transition-all ${
             tipo && !enviando
               ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
               : 'bg-gray-300 cursor-not-allowed'
