@@ -571,6 +571,18 @@ export default function Mapa() {
         )
       }} />
 
+      {/* Botao Pedra do Marlin */}
+      <button
+        onClick={() => setFlyToTarget({ lat: -20.65188, lng: -40.47844 })}
+        className="absolute top-28 right-3 z-[500] w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-lg cursor-pointer"
+        title="Pedra do Marlin"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+        </svg>
+      </button>
+
       {/* Overlay para fechar painel ao clicar fora */}
       {painelAberto && (
         <div className="fixed inset-0 z-[499]" onClick={() => setPainelAberto(null)} />
