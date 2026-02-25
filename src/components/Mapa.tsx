@@ -115,7 +115,7 @@ function BotaoLocalizacao({ onCentralizar }: { onCentralizar: () => void }) {
   return (
     <button
       onClick={onCentralizar}
-      className="absolute top-14 right-4 z-[500] w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-lg cursor-pointer"
+      className="absolute top-24 right-4 z-[500] w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-lg cursor-pointer"
       title="Minha localização"
     >
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
