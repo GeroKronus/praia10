@@ -733,16 +733,24 @@ export default function Mapa() {
         )
       }} />
 
-      {/* Botao Pedra do Marlin */}
+      {/* Botao dia/noite */}
       <button
-        onClick={() => setFlyToTarget({ lat: -20.65188, lng: -40.47844 })}
+        onClick={() => { setDarkManual(true); setIsDark(!isDark) }}
         className="absolute top-28 right-3 z-[500] w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-lg cursor-pointer"
-        title="Pedra do Marlin"
+        title={isDark ? 'Modo dia' : 'Modo noite'}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
-        </svg>
+        <span className="text-lg">{isDark ? '☀️' : '🌙'}</span>
+      </button>
+
+      {/* Botao heatmap */}
+      <button
+        onClick={() => setMostrarHeatmap(!mostrarHeatmap)}
+        className={`absolute top-40 right-3 z-[500] w-10 h-10 flex items-center justify-center rounded-lg shadow-lg cursor-pointer ${
+          mostrarHeatmap ? 'bg-orange-500' : 'bg-white'
+        }`}
+        title="Heatmap"
+      >
+        <span className="text-lg">🔥</span>
       </button>
 
       {/* Overlay para fechar painel ao clicar fora */}
@@ -802,24 +810,6 @@ export default function Mapa() {
             </button>
           </div>
 
-          <div className="ml-auto flex items-center gap-1.5 pointer-events-auto">
-            <button
-              onClick={() => { setDarkManual(true); setIsDark(!isDark) }}
-              className="rounded-xl shadow-lg px-2.5 py-2 text-xs font-semibold transition-colors bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-white"
-            >
-              {isDark ? '☀️' : '🌙'}
-            </button>
-            <button
-              onClick={() => setMostrarHeatmap(!mostrarHeatmap)}
-              className={`rounded-xl shadow-lg px-2.5 py-2 text-xs font-semibold transition-colors ${
-                mostrarHeatmap
-                  ? 'bg-orange-500 text-white'
-                  : 'bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-white'
-              }`}
-            >
-              🔥
-            </button>
-          </div>
         </div>
 
         {/* Painel aberto */}
