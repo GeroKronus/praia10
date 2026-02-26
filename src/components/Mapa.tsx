@@ -96,7 +96,10 @@ function CoordDisplay() {
           {pontos.map((p, i) => (
             <div key={i}>P{i + 1}: {p.lat.toFixed(6)}, {p.lng.toFixed(6)}</div>
           ))}
-          <button onClick={() => setPontos([])} className="text-red-400 mt-1 text-[9px] underline">Limpar</button>
+          <div className="flex gap-2 mt-1">
+            <button onClick={() => { navigator.clipboard.writeText(pontos.map((p, i) => `P${i + 1}: ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`).join('\n')) }} className="text-blue-400 text-[9px] underline">Copiar</button>
+            <button onClick={() => setPontos([])} className="text-red-400 text-[9px] underline">Limpar</button>
+          </div>
         </div>
       )}
       {coords && (
