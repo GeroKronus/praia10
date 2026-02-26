@@ -993,12 +993,31 @@ export default function Mapa() {
         </div>
       )}
 
-      {/* Instrucao */}
+      {/* Instrucao + botão GPS */}
       {!formAberto && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[9999] bg-white/95 backdrop-blur rounded-full shadow-lg px-5 py-2.5 pointer-events-none" style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
-          <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
-            Toque no mapa para denunciar
-          </span>
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2" style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
+          <div className="bg-white/95 backdrop-blur rounded-full shadow-lg px-5 py-2.5 pointer-events-none">
+            <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
+              Toque no mapa para denunciar
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  setPainelAberto(null)
+                  setPontoClicado({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+                  setFormAberto(true)
+                },
+                () => alert('Não foi possível obter sua localização.'),
+                { enableHighAccuracy: true, timeout: 10000 }
+              )
+            }}
+            className="bg-blue-600 text-white rounded-full shadow-lg w-10 h-10 flex items-center justify-center text-lg"
+            title="Usar minha localização"
+          >
+            📍
+          </button>
         </div>
       )}
 
