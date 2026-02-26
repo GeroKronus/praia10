@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node server.js",
     "build": "next build",
-    "start": "prisma db push && node server.js",
+    "start": "prisma db push --accept-data-loss && node server.js",
     "lint": "next lint",
     "postinstall": "prisma generate"
   },
