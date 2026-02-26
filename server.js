@@ -69,6 +69,23 @@ app.prepare().then(() => {
 
         console.log(`Expiradas ${expiradas.length} denúncia(s)`)
       }
+
+      // Limpar agentes inativos (sem update há 2 minutos)
+      const limiteAgente = new Date(Date.now() - 2 * 60 * 1000)
+      const agentesInativos = await prisma.agenteEspecial.findMany({
+        where: { online: true, ultimoUpdate: { lt: limiteAgente } },
+        select: { id: true },
+      })
+
+      if (agentesInativos.length > 0) {
+        const idsAgentes = agentesInativos.map((a) => a.id)
+        await prisma.agenteEspecial.updateMany({
+          where: { id: { in: idsAgentes } },
+          data: { online: false, latitude: null, longitude: null },
+        })
+        agentesInativos.forEach((a) => io.emit('agente-offline', { id: a.id }))
+        console.log(`Agentes inativos: ${agentesInativos.length}`)
+      }
     } catch (err) {
       console.error('Erro na limpeza automática:', err)
     }

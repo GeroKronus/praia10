@@ -8,7 +8,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
 
-import { Denuncia, NovaDenuncia, TipoDenuncia, TIPO_CONFIG, POI, TipoPOI, POI_CONFIG } from '@/types'
+import { Denuncia, NovaDenuncia, TipoDenuncia, TIPO_CONFIG, POI, TipoPOI, POI_CONFIG, AgenteOnline } from '@/types'
 import { criarIcone } from './IconeDenuncia'
 import { criarIconePOI } from './IconePOI'
 import FormDenuncia from './FormDenuncia'
@@ -459,6 +459,68 @@ function POIMarkersPublic({ pois }: { pois: POI[] }) {
   return null
 }
 
+function criarIconeAgente(emoji: string): L.DivIcon {
+  return L.divIcon({
+    html: `<div style="
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      background: #1e293b;
+      border: 3px solid #38bdf8;
+      box-shadow: 0 0 12px rgba(56,189,248,0.5);
+    ">${emoji}</div>`,
+    className: 'agente-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20],
+  })
+}
+
+function AgentesMarkers({ agentes }: { agentes: AgenteOnline[] }) {
+  const map = useMap()
+  const markersRef = useRef<Map<string, L.Marker>>(new Map())
+
+  useEffect(() => {
+    const agenteIds = new Set(agentes.map((a) => a.id))
+
+    // Remove markers for agents that went offline
+    markersRef.current.forEach((marker, id) => {
+      if (!agenteIds.has(id)) {
+        marker.remove()
+        markersRef.current.delete(id)
+      }
+    })
+
+    // Add/update markers
+    agentes.forEach((a) => {
+      if (a.latitude == null || a.longitude == null) return
+      const existing = markersRef.current.get(a.id)
+      if (existing) {
+        existing.setLatLng([a.latitude, a.longitude])
+      } else {
+        const marker = L.marker([a.latitude, a.longitude], {
+          icon: criarIconeAgente(a.emoji),
+          zIndexOffset: 1000,
+        })
+        marker.bindTooltip(a.nome, { permanent: false, direction: 'top', offset: [0, -20] })
+        marker.addTo(map)
+        markersRef.current.set(a.id, marker)
+      }
+    })
+
+    return () => {
+      markersRef.current.forEach((marker) => marker.remove())
+      markersRef.current.clear()
+    }
+  }, [agentes, map])
+
+  return null
+}
+
 const FOTO_ENDPOINTS = [
   { windowName: '__verFoto__', eventName: 'praia10-ver-foto', apiUrl: '/api/denuncias' },
   { windowName: '__verFotoPOI__', eventName: 'praia10-ver-foto-poi', apiUrl: '/api/pois' },
@@ -481,6 +543,16 @@ export default function Mapa() {
   const [mostrarClaimModal, setMostrarClaimModal] = useState(false)
   const [setorSelecionado, setSetorSelecionado] = useState<number | null>(null)
   const [claimCarregando, setClaimCarregando] = useState(false)
+
+  // Agentes especiais
+  const [agentesOnline, setAgentesOnline] = useState<AgenteOnline[]>([])
+  const [agenteLogado, setAgenteLogado] = useState<{ id: string; nome: string; tipo: string; emoji: string } | null>(null)
+  const [rastreamentoAtivo, setRastreamentoAtivo] = useState(false)
+  const [mostrarLoginAgente, setMostrarLoginAgente] = useState(false)
+  const [loginAgente, setLoginAgente] = useState({ usuario: '', senha: '' })
+  const [loginErro, setLoginErro] = useState('')
+  const watchIdRef = useRef<number | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const { fotoUrl, carregandoFoto, fecharFoto } = useFotoModal(FOTO_ENDPOINTS)
 
@@ -592,6 +664,24 @@ export default function Mapa() {
       .catch(console.error)
   }, [])
 
+  // Buscar agentes online
+  useEffect(() => {
+    fetch('/api/agentes')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setAgentesOnline(data)
+      })
+      .catch(console.error)
+  }, [])
+
+  // Restaurar sessão do agente
+  useEffect(() => {
+    const saved = sessionStorage.getItem('praia10_agente')
+    if (saved) {
+      try { setAgenteLogado(JSON.parse(saved)) } catch { /* ignore */ }
+    }
+  }, [])
+
   // Buscar ranking para avatares nos popups
   useEffect(() => {
     fetch('/api/ranking')
@@ -654,6 +744,22 @@ export default function Mapa() {
       setPois((prev) => prev.filter((p) => p.id !== id))
     })
 
+    socket.on('agente-localizacao', (agente: AgenteOnline) => {
+      setAgentesOnline((prev) => {
+        const idx = prev.findIndex((a) => a.id === agente.id)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = agente
+          return next
+        }
+        return [...prev, agente]
+      })
+    })
+
+    socket.on('agente-offline', ({ id }: { id: string }) => {
+      setAgentesOnline((prev) => prev.filter((a) => a.id !== id))
+    })
+
     return () => {
       socket.off('nova-denuncia')
       socket.off('denuncia-removida')
@@ -662,6 +768,8 @@ export default function Mapa() {
       socket.off('denuncia-renovada')
       socket.off('novo-poi')
       socket.off('poi-removido')
+      socket.off('agente-localizacao')
+      socket.off('agente-offline')
     }
   }, [])
 
@@ -782,6 +890,99 @@ export default function Mapa() {
     }
   }, [])
 
+  // Login do agente especial
+  const handleLoginAgente = useCallback(async () => {
+    setLoginErro('')
+    try {
+      const res = await fetch('/api/agentes/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loginAgente),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAgenteLogado(data)
+        sessionStorage.setItem('praia10_agente', JSON.stringify(data))
+        setMostrarLoginAgente(false)
+        setLoginAgente({ usuario: '', senha: '' })
+      } else {
+        const data = await res.json()
+        setLoginErro(data.error || 'Erro no login')
+      }
+    } catch {
+      setLoginErro('Erro de conexão')
+    }
+  }, [loginAgente])
+
+  // Toggle rastreamento
+  const toggleRastreamento = useCallback(() => {
+    if (!agenteLogado) return
+
+    if (rastreamentoAtivo) {
+      // Desligar
+      if (watchIdRef.current != null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      setRastreamentoAtivo(false)
+      fetch(`/api/agentes/localizacao?agenteId=${agenteLogado.id}`, { method: 'DELETE' }).catch(() => {})
+    } else {
+      // Ligar
+      setRastreamentoAtivo(true)
+      let lastLat: number | null = null
+      let lastLng: number | null = null
+
+      const enviar = () => {
+        if (lastLat != null && lastLng != null) {
+          fetch('/api/agentes/localizacao', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agenteId: agenteLogado.id, latitude: lastLat, longitude: lastLng }),
+          }).catch(() => {})
+        }
+      }
+
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          lastLat = pos.coords.latitude
+          lastLng = pos.coords.longitude
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 5000 }
+      )
+
+      // Enviar posição a cada 10 segundos
+      enviar()
+      intervalRef.current = setInterval(enviar, 10000)
+    }
+  }, [agenteLogado, rastreamentoAtivo])
+
+  // Logout do agente
+  const handleLogoutAgente = useCallback(() => {
+    if (rastreamentoAtivo && agenteLogado) {
+      if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current)
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      watchIdRef.current = null
+      intervalRef.current = null
+      fetch(`/api/agentes/localizacao?agenteId=${agenteLogado.id}`, { method: 'DELETE' }).catch(() => {})
+    }
+    setRastreamentoAtivo(false)
+    setAgenteLogado(null)
+    sessionStorage.removeItem('praia10_agente')
+  }, [rastreamentoAtivo, agenteLogado])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current)
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [])
+
   const handleClose = () => {
     setFormAberto(false)
     setPontoClicado(null)
@@ -827,6 +1028,7 @@ export default function Mapa() {
         )}
         <HeatmapLayer denuncias={denuncias} visivel={mostrarHeatmap} />
         <POIMarkersPublic pois={pois} />
+        <AgentesMarkers agentes={agentesOnline} />
         <UserLocation />
         <CoordDisplay />
         {setorSelecionado && (() => {
@@ -870,6 +1072,77 @@ export default function Mapa() {
       >
         <span className="text-lg">🔥</span>
       </button>
+
+      {/* Botao agente especial */}
+      {!agenteLogado ? (
+        <button
+          onClick={() => setMostrarLoginAgente(true)}
+          className="absolute top-52 right-3 z-[500] w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-lg cursor-pointer"
+          title="Login agente especial"
+        >
+          <span className="text-lg">🛡️</span>
+        </button>
+      ) : (
+        <div className="absolute top-52 right-3 z-[500] flex flex-col items-end gap-1">
+          <button
+            onClick={toggleRastreamento}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg shadow-lg text-xs font-bold transition-colors ${
+              rastreamentoAtivo
+                ? 'bg-green-500 text-white'
+                : 'bg-white text-gray-700'
+            }`}
+          >
+            <span>{agenteLogado.emoji}</span>
+            <span>{rastreamentoAtivo ? 'ON' : 'OFF'}</span>
+          </button>
+          <button
+            onClick={handleLogoutAgente}
+            className="text-[10px] text-gray-400 hover:text-red-500 transition-colors"
+          >
+            Sair
+          </button>
+        </div>
+      )}
+
+      {/* Modal login agente */}
+      {mostrarLoginAgente && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50" onClick={() => setMostrarLoginAgente(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-5 mx-4 max-w-xs w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-center mb-1">🛡️ Agente Especial</h3>
+            <p className="text-xs text-gray-500 text-center mb-4">Login para rastreamento em tempo real</p>
+            <div className="flex flex-col gap-3">
+              <input
+                type="text"
+                placeholder="Usuário"
+                value={loginAgente.usuario}
+                onChange={(e) => setLoginAgente((p) => ({ ...p, usuario: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="password"
+                placeholder="Senha"
+                value={loginAgente.senha}
+                onChange={(e) => setLoginAgente((p) => ({ ...p, senha: e.target.value }))}
+                onKeyDown={(e) => e.key === 'Enter' && handleLoginAgente()}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {loginErro && <p className="text-xs text-red-500 text-center">{loginErro}</p>}
+              <button
+                onClick={handleLoginAgente}
+                className="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors"
+              >
+                Entrar
+              </button>
+            </div>
+            <button
+              onClick={() => setMostrarLoginAgente(false)}
+              className="mt-3 w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Overlay para fechar painel ao clicar fora */}
       {painelAberto && (

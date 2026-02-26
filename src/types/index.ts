@@ -85,6 +85,15 @@ export const POI_CONFIG: Record<TipoPOI, { label: string; emoji: string; cor: st
   [TipoPOI.ENTIDADE]: { label: 'Entidade', emoji: '🏛️', cor: '#1abc9c' },
 }
 
+export interface AgenteOnline {
+  id: string
+  nome: string
+  tipo: string
+  emoji: string
+  latitude: number | null
+  longitude: number | null
+}
+
 export interface POI {
   id: string
   tipo: TipoPOI

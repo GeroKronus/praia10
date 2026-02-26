@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import LoginGate from '@/components/dashboard/LoginGate'
 import StatsCards from '@/components/dashboard/StatsCards'
 import TabelaDenuncias from '@/components/dashboard/TabelaDenuncias'
+import TabelaAgentes from '@/components/dashboard/TabelaAgentes'
 import { DashboardStats } from '@/types'
 
 const ChartPorTipo = dynamic(() => import('@/components/dashboard/ChartPorTipo'), { ssr: false })
@@ -128,6 +129,9 @@ export default function DashboardPage() {
         {stats && (
           <ChartPorDia data={stats.porDia} />
         )}
+
+        {/* Agentes Especiais */}
+        <TabelaAgentes senha={senha} />
 
         {/* Tabela */}
         <TabelaDenuncias senha={senha} />

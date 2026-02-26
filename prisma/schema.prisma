@@ -90,6 +90,22 @@ model AvatarEspecial {
   @@map("avatares_especiais")
 }
 
+model AgenteEspecial {
+  id           String    @id @default(uuid())
+  usuario      String    @unique
+  senha        String
+  nome         String
+  tipo         String
+  emoji        String
+  ativo        Boolean   @default(true)
+  latitude     Float?
+  longitude    Float?
+  online       Boolean   @default(false)
+  ultimoUpdate DateTime?
+  criadoEm     DateTime  @default(now())
+  @@map("agentes_especiais")
+}
+
 model PushSubscription {
   id         String   @id @default(uuid())
   endpoint   String   @unique
