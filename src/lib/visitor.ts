@@ -1,6 +1,15 @@
 const KEY = 'praia10_visitor'
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60 // 1 ano
 
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
+  // Fallback para navegadores mais antigos
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
 function getCookie(name: string): string | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
   return match ? decodeURIComponent(match[1]) : null
@@ -44,7 +53,7 @@ export function getVisitorId(): string {
   if (fromCookie && fromStorage) return fromStorage
 
   // Nenhum → gerar novo
-  const id = crypto.randomUUID()
+  const id = generateUUID()
   setVisitorId(id)
   return id
 }

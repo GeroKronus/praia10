@@ -8,17 +8,16 @@ export async function GET(request: NextRequest) {
   try {
     const visitorId = request.nextUrl.searchParams.get('visitorId') || ''
 
-    // Buscar claims deste visitante
-    const meusClaims = await prisma.avatarEspecial.findMany({
-      where: { visitorId },
-    })
-    const minhasChaves = new Set(meusClaims.map((c) => c.chave))
+    // Buscar TODOS os claims (para saber quais já foram reivindicados por alguém)
+    const todosClaims = await prisma.avatarEspecial.findMany()
+    const chavesReivindicadas = new Set(todosClaims.map((c) => c.chave))
+    const minhasChaves = new Set(todosClaims.filter((c) => c.visitorId === visitorId).map((c) => c.chave))
 
     const lista = Object.entries(SPECIAL_AVATARS).map(([chave, avatar]) => ({
       chave,
       emoji: avatar.emoji,
       titulo: avatar.titulo,
-      disponivel: !minhasChaves.has(chave),
+      disponivel: !chavesReivindicadas.has(chave),
       meu: minhasChaves.has(chave),
     }))
 
