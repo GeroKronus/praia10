@@ -21,7 +21,7 @@ import PushSubscriber from './PushSubscriber'
 import PhotoModal from './PhotoModal'
 import { ToastProvider, useToastNotificacao } from './ToastNotificacao'
 import { getSocket } from '@/lib/socket'
-import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, TIPOS_EXPIRACAO_LONGA, CENTRO_PRAIA_MORRO } from '@/lib/constants'
+import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, AVISO_CURTA_MS, AVISO_LONGA_MS, TIPOS_EXPIRACAO_LONGA, CENTRO_PRAIA_MORRO } from '@/lib/constants'
 import { getAvatarTier } from '@/lib/avatares'
 import { getVisitorId, reconcileVisitorId } from '@/lib/visitor'
 import { useFotoModal } from '@/hooks/useFotoModal'
@@ -64,6 +64,13 @@ function tempoRestante(criadoEm: string, tipo: string): string {
   const seg = Math.floor((diff % 60000) / 1000)
   if (horas > 0) return `${horas}h${min.toString().padStart(2, '0')}m`
   return `${min}:${seg.toString().padStart(2, '0')}`
+}
+
+function pertoDeExpirar(criadoEm: string, tipo: string): boolean {
+  const expiracao = TIPOS_EXPIRACAO_LONGA.includes(tipo) ? EXPIRACAO_LONGA_MS : EXPIRACAO_CURTA_MS
+  const aviso = TIPOS_EXPIRACAO_LONGA.includes(tipo) ? AVISO_LONGA_MS : AVISO_CURTA_MS
+  const restante = expiracao - (Date.now() - new Date(criadoEm).getTime())
+  return restante > 0 && restante <= aviso
 }
 
 // Componente de localizacao do usuario (marca bolinha azul + centraliza na 1a posicao)
@@ -167,12 +174,14 @@ function MarkerClusterGroup({
   onRemover,
   onConfirmar,
   onCompartilhar,
+  onRenovar,
   avatarMap,
 }: {
   denuncias: Denuncia[]
   onRemover: (id: string) => void
   onConfirmar: (id: string) => void
   onCompartilhar: (id: string) => void
+  onRenovar: (id: string) => void
   avatarMap: Map<string, AvatarInfo>
 }) {
   const map = useMap()
@@ -225,6 +234,7 @@ function MarkerClusterGroup({
       const data = new Date(d.criadoEm).toLocaleString('pt-BR')
       const ehMinha = d.sessionId === sessionId.current
       const tempo = tempoRestante(d.criadoEm, d.tipo)
+      const expirando = pertoDeExpirar(d.criadoEm, d.tipo)
       const avatar = d.visitorId
         ? avatarMap.get(d.visitorId) || getAvatarTier(localCounts.get(d.visitorId) || 0)
         : null
@@ -306,6 +316,21 @@ function MarkerClusterGroup({
               cursor: pointer;
             "
           >Remover denuncia</button>` : ''}
+          ${!resolvido && ehMinha && expirando ? `<button
+            onclick="window.__renovarDenuncia__('${d.id}')"
+            style="
+              margin-top: 6px;
+              width: 100%;
+              padding: 6px;
+              background: #f59e0b;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 13px;
+              font-weight: bold;
+              cursor: pointer;
+            "
+          >🔄 Renovar denúncia</button>` : ''}
           <button
             onclick="window.__compartilharDenuncia__('${d.id}')"
             style="
@@ -335,6 +360,7 @@ function MarkerClusterGroup({
   useWindowFunction('__removerDenuncia__', onRemover)
   useWindowFunction('__confirmarDenuncia__', onConfirmar)
   useWindowFunction('__compartilharDenuncia__', onCompartilhar)
+  useWindowFunction('__renovarDenuncia__', onRenovar)
 
   // __verFoto__ is handled by useFotoModal in the parent component
 
@@ -571,6 +597,12 @@ export default function Mapa() {
       )
     })
 
+    socket.on('denuncia-renovada', ({ id, criadoEm }: { id: string; criadoEm: string }) => {
+      setDenuncias((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, criadoEm } : d))
+      )
+    })
+
     socket.on('novo-poi', (poi: POI) => {
       setPois((prev) => {
         if (prev.some((p) => p.id === poi.id)) return prev
@@ -587,6 +619,7 @@ export default function Mapa() {
       socket.off('denuncia-removida')
       socket.off('denuncia-confirmada')
       socket.off('denuncia-resolvida')
+      socket.off('denuncia-renovada')
       socket.off('novo-poi')
       socket.off('poi-removido')
     }
@@ -676,6 +709,23 @@ export default function Mapa() {
     }
   }, [denuncias])
 
+  const handleRenovar = useCallback(async (id: string) => {
+    const sessionId = getSessionId()
+    try {
+      const res = await fetch('/api/denuncias/renovar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ denunciaId: id, sessionId }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.error || 'Erro ao renovar')
+      }
+    } catch (error) {
+      console.error('Erro ao renovar denuncia:', error)
+    }
+  }, [])
+
   const handleClose = () => {
     setFormAberto(false)
     setPontoClicado(null)
@@ -715,6 +765,7 @@ export default function Mapa() {
             onRemover={handleRemover}
             onConfirmar={handleConfirmar}
             onCompartilhar={handleCompartilhar}
+            onRenovar={handleRenovar}
             avatarMap={avatarMap}
           />
         )}
