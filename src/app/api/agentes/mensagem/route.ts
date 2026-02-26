@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { emitSocket } from '@/lib/socketEmitter'
+import { emitSocket, emitSocketTo } from '@/lib/socketEmitter'
 
 export async function POST(request: Request) {
   try {
@@ -10,10 +10,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'texto obrigatório' }, { status: 400 })
     }
 
-    if (body.broadcast) {
-      // Agente respondendo — broadcast para todos os clientes
-      emitSocket('agente-broadcast', {
-        nome: body.nome || 'Agente',
+    if (body.socketId && body.nome) {
+      // Resposta direcionada ao remetente original
+      emitSocketTo(body.socketId, 'agente-resposta', {
+        nome: body.nome,
         emoji: body.emoji || '🛡️',
         texto,
         enviadoEm: new Date().toISOString(),
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
       emitSocket('agente-mensagem', {
         agenteId: body.agenteId,
         texto,
+        socketId: body.remetenteSocketId || '',
         enviadoEm: new Date().toISOString(),
       })
     }

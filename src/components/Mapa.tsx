@@ -798,14 +798,14 @@ export default function Mapa() {
   }, [])
 
   // Mensagens recebidas pelo agente (persistem até apagar)
-  const [mensagensAgente, setMensagensAgente] = useState<{ id: string; texto: string; enviadoEm: string; respondendo?: boolean }[]>([])
+  const [mensagensAgente, setMensagensAgente] = useState<{ id: string; texto: string; enviadoEm: string; socketId: string; respondendo?: boolean }[]>([])
 
   useEffect(() => {
     if (!agenteLogado) return
     const socket = getSocket()
-    const handler = (msg: { agenteId: string; texto: string; enviadoEm: string }) => {
+    const handler = (msg: { agenteId: string; texto: string; enviadoEm: string; socketId: string }) => {
       if (msg.agenteId === agenteLogado.id) {
-        setMensagensAgente((prev) => [...prev, { id: crypto.randomUUID(), texto: msg.texto, enviadoEm: msg.enviadoEm }])
+        setMensagensAgente((prev) => [...prev, { id: crypto.randomUUID(), texto: msg.texto, enviadoEm: msg.enviadoEm, socketId: msg.socketId }])
         if (navigator.vibrate) navigator.vibrate([100, 50, 100])
       }
     }
@@ -813,14 +813,15 @@ export default function Mapa() {
     return () => { socket.off('agente-mensagem', handler) }
   }, [agenteLogado])
 
-  // Broadcast de resposta do agente — todos os clientes veem
+  // Resposta direcionada do agente — só o remetente original vê
   useEffect(() => {
     const socket = getSocket()
     const handler = (msg: { nome: string; emoji: string; texto: string }) => {
       toast(`${msg.emoji} ${msg.nome}: ${msg.texto}`, { duration: 6000 })
+      if (navigator.vibrate) navigator.vibrate(200)
     }
-    socket.on('agente-broadcast', handler)
-    return () => { socket.off('agente-broadcast', handler) }
+    socket.on('agente-resposta', handler)
+    return () => { socket.off('agente-resposta', handler) }
   }, [])
 
   // Reconectar socket e re-buscar dados ao voltar do background (PWA)
@@ -947,10 +948,11 @@ export default function Mapa() {
     const texto = input?.value?.trim()
     if (!texto) return
     try {
+      const socket = getSocket()
       await fetch('/api/agentes/mensagem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agenteId, texto }),
+        body: JSON.stringify({ agenteId, texto, remetenteSocketId: socket.id }),
       })
       if (input) input.value = ''
       toast('Mensagem enviada!', { duration: 2000 })
@@ -963,17 +965,19 @@ export default function Mapa() {
 
   const handleResponderMsg = useCallback(async (msgId: string, texto: string) => {
     if (!agenteLogado || !texto.trim()) return
+    const msg = mensagensAgente.find((m) => m.id === msgId)
+    if (!msg?.socketId) { toast('Remetente indisponível', { duration: 2000 }); return }
     try {
       await fetch('/api/agentes/mensagem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ broadcast: true, nome: agenteLogado.nome, emoji: agenteLogado.emoji, texto }),
+        body: JSON.stringify({ socketId: msg.socketId, nome: agenteLogado.nome, emoji: agenteLogado.emoji, texto }),
       })
       setMensagensAgente((prev) => prev.filter((m) => m.id !== msgId))
     } catch {
       toast('Erro ao responder', { duration: 2000 })
     }
-  }, [agenteLogado])
+  }, [agenteLogado, mensagensAgente])
 
   // Login do agente especial
   const handleLoginAgente = useCallback(async () => {
