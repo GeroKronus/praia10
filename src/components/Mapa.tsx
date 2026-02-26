@@ -78,6 +78,20 @@ function pertoDeExpirar(criadoEm: string, tipo: string): boolean {
   return restante > 0 && restante <= aviso
 }
 
+// Display de coordenadas ao mover o mouse (temporário — para mapear setores)
+function CoordDisplay() {
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  useMapEvents({
+    mousemove(e) { setCoords({ lat: e.latlng.lat, lng: e.latlng.lng }) },
+  })
+  if (!coords) return null
+  return (
+    <div className="absolute bottom-2 left-2 z-[1000] bg-black/70 text-white text-xs font-mono px-2 py-1 rounded pointer-events-none select-all">
+      {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+    </div>
+  )
+}
+
 // Componente de localizacao do usuario (marca bolinha azul + centraliza na 1a posicao)
 function UserLocation() {
   const map = useMap()
@@ -793,6 +807,7 @@ export default function Mapa() {
         <HeatmapLayer denuncias={denuncias} visivel={mostrarHeatmap} />
         <POIMarkersPublic pois={pois} />
         <UserLocation />
+        <CoordDisplay />
         <FlyToHandler target={flyToTarget} />
       </MapContainer>
 
