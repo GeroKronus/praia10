@@ -14,13 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Avatar inválido' }, { status: 400 })
     }
 
-    // Verificar se já foi reivindicado
-    const existente = await prisma.avatarEspecial.findUnique({ where: { chave } })
-    if (existente) {
-      return NextResponse.json({ error: 'Este avatar já foi reivindicado' }, { status: 409 })
-    }
-
-    // Verificar se o visitante já tem outro avatar especial
+    // Verificar se este visitante já tem avatar especial
     const jaTemOutro = await prisma.avatarEspecial.findFirst({ where: { visitorId } })
     if (jaTemOutro) {
       return NextResponse.json({ error: 'Você já possui um avatar especial' }, { status: 409 })

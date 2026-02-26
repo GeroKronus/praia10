@@ -84,9 +84,10 @@ model POI {
 
 model AvatarEspecial {
   id        String   @id @default(uuid())
-  chave     String   @unique    // "poseidon" | "sereia"
+  chave     String              // "poseidon" | "sereia"
   visitorId String
   criadoEm  DateTime @default(now())
+  @@unique([chave, visitorId])
   @@map("avatares_especiais")
 }
 

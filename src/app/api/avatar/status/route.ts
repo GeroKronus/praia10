@@ -8,19 +8,19 @@ export async function GET(request: NextRequest) {
   try {
     const visitorId = request.nextUrl.searchParams.get('visitorId') || ''
 
-    const claims = await prisma.avatarEspecial.findMany()
-    const claimMap = new Map(claims.map((c) => [c.chave, c.visitorId]))
-
-    const lista = Object.entries(SPECIAL_AVATARS).map(([chave, avatar]) => {
-      const donoId = claimMap.get(chave)
-      return {
-        chave,
-        emoji: avatar.emoji,
-        titulo: avatar.titulo,
-        disponivel: !donoId,
-        meu: donoId === visitorId,
-      }
+    // Buscar claims deste visitante
+    const meusClaims = await prisma.avatarEspecial.findMany({
+      where: { visitorId },
     })
+    const minhasChaves = new Set(meusClaims.map((c) => c.chave))
+
+    const lista = Object.entries(SPECIAL_AVATARS).map(([chave, avatar]) => ({
+      chave,
+      emoji: avatar.emoji,
+      titulo: avatar.titulo,
+      disponivel: !minhasChaves.has(chave),
+      meu: minhasChaves.has(chave),
+    }))
 
     return NextResponse.json(lista)
   } catch (error) {
