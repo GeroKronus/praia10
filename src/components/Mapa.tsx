@@ -751,11 +751,7 @@ export default function Mapa() {
       {/* Toolbar unificada */}
       <div className="absolute top-3 left-3 right-3 z-[500] pointer-events-none">
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-1 gap-0.5 pointer-events-auto overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-1 px-2 py-1 border-r border-gray-200 mr-0.5 flex-shrink-0">
-              <span className="text-base">🏖️</span>
-              <span className="text-xs font-bold text-gray-800 leading-tight">Praia10</span>
-            </div>
+          <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-1 gap-0.5 pointer-events-auto">
             <button
               onClick={() => togglePainel('utilidades')}
               className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors flex-shrink-0 ${
