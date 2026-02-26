@@ -797,19 +797,31 @@ export default function Mapa() {
     }
   }, [])
 
-  // Listener para mensagens direcionadas ao agente logado
+  // Mensagens recebidas pelo agente (persistem até apagar)
+  const [mensagensAgente, setMensagensAgente] = useState<{ id: string; texto: string; enviadoEm: string; respondendo?: boolean }[]>([])
+
   useEffect(() => {
     if (!agenteLogado) return
     const socket = getSocket()
-    const handler = (msg: { agenteId: string; texto: string }) => {
+    const handler = (msg: { agenteId: string; texto: string; enviadoEm: string }) => {
       if (msg.agenteId === agenteLogado.id) {
-        toast(`💬 ${msg.texto}`, { duration: 5000 })
+        setMensagensAgente((prev) => [...prev, { id: crypto.randomUUID(), texto: msg.texto, enviadoEm: msg.enviadoEm }])
         if (navigator.vibrate) navigator.vibrate([100, 50, 100])
       }
     }
     socket.on('agente-mensagem', handler)
     return () => { socket.off('agente-mensagem', handler) }
   }, [agenteLogado])
+
+  // Broadcast de resposta do agente — todos os clientes veem
+  useEffect(() => {
+    const socket = getSocket()
+    const handler = (msg: { nome: string; emoji: string; texto: string }) => {
+      toast(`${msg.emoji} ${msg.nome}: ${msg.texto}`, { duration: 6000 })
+    }
+    socket.on('agente-broadcast', handler)
+    return () => { socket.off('agente-broadcast', handler) }
+  }, [])
 
   // Reconectar socket e re-buscar dados ao voltar do background (PWA)
   useEffect(() => {
@@ -948,6 +960,20 @@ export default function Mapa() {
   }, [])
 
   useWindowFunction('__enviarMsgAgente__', handleEnviarMsgAgente)
+
+  const handleResponderMsg = useCallback(async (msgId: string, texto: string) => {
+    if (!agenteLogado || !texto.trim()) return
+    try {
+      await fetch('/api/agentes/mensagem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ broadcast: true, nome: agenteLogado.nome, emoji: agenteLogado.emoji, texto }),
+      })
+      setMensagensAgente((prev) => prev.filter((m) => m.id !== msgId))
+    } catch {
+      toast('Erro ao responder', { duration: 2000 })
+    }
+  }, [agenteLogado])
 
   // Login do agente especial
   const handleLoginAgente = useCallback(async () => {
@@ -1160,6 +1186,60 @@ export default function Mapa() {
           >
             Sair
           </button>
+        </div>
+      )}
+
+      {/* Painel de mensagens recebidas pelo agente */}
+      {agenteLogado && mensagensAgente.length > 0 && (
+        <div className="absolute bottom-20 right-3 z-[600] flex flex-col gap-2 max-w-[280px]">
+          {mensagensAgente.map((msg) => (
+            <div key={msg.id} className="bg-white rounded-xl shadow-lg p-3 border-l-4 border-blue-500">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm text-gray-800 flex-1">💬 {msg.texto}</p>
+                <button
+                  onClick={() => setMensagensAgente((prev) => prev.filter((m) => m.id !== msg.id))}
+                  className="text-gray-400 hover:text-red-500 text-lg leading-none flex-shrink-0"
+                  title="Apagar"
+                >×</button>
+              </div>
+              <div className="text-[10px] text-gray-400 mt-1">
+                {new Date(msg.enviadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+              {!msg.respondendo ? (
+                <button
+                  onClick={() => setMensagensAgente((prev) => prev.map((m) => m.id === msg.id ? { ...m, respondendo: true } : m))}
+                  className="mt-2 text-xs text-blue-600 font-semibold hover:text-blue-800"
+                >
+                  Responder
+                </button>
+              ) : (
+                <div className="mt-2 flex gap-1">
+                  <input
+                    id={`reply-${msg.id}`}
+                    type="text"
+                    maxLength={200}
+                    placeholder="Sua resposta..."
+                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const input = e.target as HTMLInputElement
+                        handleResponderMsg(msg.id, input.value)
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById(`reply-${msg.id}`) as HTMLInputElement
+                      if (input) handleResponderMsg(msg.id, input.value)
+                    }}
+                    className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700"
+                  >
+                    Enviar
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

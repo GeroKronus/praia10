@@ -3,19 +3,32 @@ import { emitSocket } from '@/lib/socketEmitter'
 
 export async function POST(request: Request) {
   try {
-    const { agenteId, texto } = await request.json()
+    const body = await request.json()
+    const texto = body.texto?.trim()?.slice(0, 200)
 
-    if (!agenteId || !texto?.trim()) {
-      return NextResponse.json({ error: 'agenteId e texto obrigatórios' }, { status: 400 })
+    if (!texto) {
+      return NextResponse.json({ error: 'texto obrigatório' }, { status: 400 })
     }
 
-    const textoLimpo = texto.trim().slice(0, 200)
-
-    emitSocket('agente-mensagem', {
-      agenteId,
-      texto: textoLimpo,
-      enviadoEm: new Date().toISOString(),
-    })
+    if (body.broadcast) {
+      // Agente respondendo — broadcast para todos os clientes
+      emitSocket('agente-broadcast', {
+        nome: body.nome || 'Agente',
+        emoji: body.emoji || '🛡️',
+        texto,
+        enviadoEm: new Date().toISOString(),
+      })
+    } else {
+      // Mensagem direta para um agente
+      if (!body.agenteId) {
+        return NextResponse.json({ error: 'agenteId obrigatório' }, { status: 400 })
+      }
+      emitSocket('agente-mensagem', {
+        agenteId: body.agenteId,
+        texto,
+        enviadoEm: new Date().toISOString(),
+      })
+    }
 
     return NextResponse.json({ ok: true })
   } catch (error) {
