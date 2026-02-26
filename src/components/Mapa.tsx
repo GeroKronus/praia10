@@ -81,13 +81,29 @@ function pertoDeExpirar(criadoEm: string, tipo: string): boolean {
 // Display de coordenadas ao mover o mouse (temporário — para mapear setores)
 function CoordDisplay() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [pontos, setPontos] = useState<{ lat: number; lng: number }[]>([])
   useMapEvents({
     mousemove(e) { setCoords({ lat: e.latlng.lat, lng: e.latlng.lng }) },
+    contextmenu(e) {
+      e.originalEvent.preventDefault()
+      setPontos((prev) => [...prev, { lat: e.latlng.lat, lng: e.latlng.lng }])
+    },
   })
-  if (!coords) return null
   return (
-    <div className="absolute bottom-2 left-2 z-[1000] bg-black/70 text-white text-xs font-mono px-2 py-1 rounded pointer-events-none select-all">
-      {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+    <div className="absolute bottom-2 left-2 z-[1000] flex flex-col gap-1 pointer-events-none">
+      {pontos.length > 0 && (
+        <div className="bg-black/80 text-green-400 text-[10px] font-mono px-2 py-1 rounded max-h-40 overflow-y-auto pointer-events-auto select-all">
+          {pontos.map((p, i) => (
+            <div key={i}>P{i + 1}: {p.lat.toFixed(6)}, {p.lng.toFixed(6)}</div>
+          ))}
+          <button onClick={() => setPontos([])} className="text-red-400 mt-1 text-[9px] underline">Limpar</button>
+        </div>
+      )}
+      {coords && (
+        <div className="bg-black/70 text-white text-xs font-mono px-2 py-1 rounded select-all">
+          {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+        </div>
+      )}
     </div>
   )
 }
