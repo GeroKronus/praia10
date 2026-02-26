@@ -625,6 +625,22 @@ export default function Mapa() {
     }
   }, [])
 
+  // Reconectar socket e re-buscar dados ao voltar do background (PWA)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return
+      const socket = getSocket()
+      if (socket.disconnected) socket.connect()
+      // Re-buscar denúncias atualizadas
+      fetch('/api/denuncias')
+        .then((res) => res.json())
+        .then((data) => { if (Array.isArray(data)) setDenuncias(data) })
+        .catch(console.error)
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
+
   // Timer local para remover denuncias expiradas
   useEffect(() => {
     const interval = setInterval(() => {
