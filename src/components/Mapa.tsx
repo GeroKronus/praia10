@@ -20,6 +20,7 @@ import RankingColaboradores from './RankingColaboradores'
 import PushSubscriber from './PushSubscriber'
 import PhotoModal from './PhotoModal'
 import { ToastProvider, useToastNotificacao } from './ToastNotificacao'
+import toast from 'react-hot-toast'
 import { getSocket } from '@/lib/socket'
 import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, AVISO_CURTA_MS, AVISO_LONGA_MS, TIPOS_EXPIRACAO_LONGA, CENTRO_PRAIA_MORRO } from '@/lib/constants'
 import { getAvatarTier } from '@/lib/avatares'
@@ -480,6 +481,21 @@ function criarIconeAgente(emoji: string): L.DivIcon {
   })
 }
 
+function popupHtmlAgente(a: AgenteOnline): string {
+  return `
+    <div style="text-align:center;min-width:160px">
+      <div style="font-size:20px">${a.emoji} <b>${a.nome}</b></div>
+      <div style="margin-top:6px">
+        <input id="msg-agente-${a.id}" type="text" maxlength="200" placeholder="Enviar mensagem..."
+          style="width:100%;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px" />
+      </div>
+      <button onclick="window.__enviarMsgAgente__('${a.id}')"
+        style="margin-top:6px;width:100%;padding:5px 0;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">
+        Enviar 💬
+      </button>
+    </div>`
+}
+
 function AgentesMarkers({ agentes }: { agentes: AgenteOnline[] }) {
   const map = useMap()
   const markersRef = useRef<Map<string, L.Marker>>(new Map())
@@ -501,12 +517,13 @@ function AgentesMarkers({ agentes }: { agentes: AgenteOnline[] }) {
       const existing = markersRef.current.get(a.id)
       if (existing) {
         existing.setLatLng([a.latitude, a.longitude])
+        existing.setPopupContent(popupHtmlAgente(a))
       } else {
         const marker = L.marker([a.latitude, a.longitude], {
           icon: criarIconeAgente(a.emoji),
           zIndexOffset: 1000,
         })
-        marker.bindTooltip(a.nome, { permanent: false, direction: 'top', offset: [0, -20] })
+        marker.bindPopup(popupHtmlAgente(a), { minWidth: 180 })
         marker.addTo(map)
         markersRef.current.set(a.id, marker)
       }
@@ -780,6 +797,20 @@ export default function Mapa() {
     }
   }, [])
 
+  // Listener para mensagens direcionadas ao agente logado
+  useEffect(() => {
+    if (!agenteLogado) return
+    const socket = getSocket()
+    const handler = (msg: { agenteId: string; texto: string }) => {
+      if (msg.agenteId === agenteLogado.id) {
+        toast(`💬 ${msg.texto}`, { duration: 5000 })
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100])
+      }
+    }
+    socket.on('agente-mensagem', handler)
+    return () => { socket.off('agente-mensagem', handler) }
+  }, [agenteLogado])
+
   // Reconectar socket e re-buscar dados ao voltar do background (PWA)
   useEffect(() => {
     const handleVisibility = () => {
@@ -897,6 +928,26 @@ export default function Mapa() {
       console.error('Erro ao renovar denuncia:', error)
     }
   }, [])
+
+  // Enviar mensagem para agente via popup do mapa
+  const handleEnviarMsgAgente = useCallback(async (agenteId: string) => {
+    const input = document.getElementById(`msg-agente-${agenteId}`) as HTMLInputElement | null
+    const texto = input?.value?.trim()
+    if (!texto) return
+    try {
+      await fetch('/api/agentes/mensagem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agenteId, texto }),
+      })
+      if (input) input.value = ''
+      toast('Mensagem enviada!', { duration: 2000 })
+    } catch {
+      toast('Erro ao enviar mensagem', { duration: 2000 })
+    }
+  }, [])
+
+  useWindowFunction('__enviarMsgAgente__', handleEnviarMsgAgente)
 
   // Login do agente especial
   const handleLoginAgente = useCallback(async () => {
