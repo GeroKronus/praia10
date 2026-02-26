@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Polygon, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -23,6 +23,7 @@ import { ToastProvider, useToastNotificacao } from './ToastNotificacao'
 import { getSocket } from '@/lib/socket'
 import { EXPIRACAO_CURTA_MS, EXPIRACAO_LONGA_MS, AVISO_CURTA_MS, AVISO_LONGA_MS, TIPOS_EXPIRACAO_LONGA, CENTRO_PRAIA_MORRO } from '@/lib/constants'
 import { getAvatarTier } from '@/lib/avatares'
+import { SETORES } from '@/lib/setores'
 import { getVisitorId, reconcileVisitorId } from '@/lib/visitor'
 import { useFotoModal } from '@/hooks/useFotoModal'
 import { useWindowFunction } from '@/hooks/useWindowFunction'
@@ -478,6 +479,7 @@ export default function Mapa() {
   const [avatarMap, setAvatarMap] = useState<Map<string, AvatarInfo>>(new Map())
   const [avatarClaims, setAvatarClaims] = useState<AvatarClaim[]>([])
   const [mostrarClaimModal, setMostrarClaimModal] = useState(false)
+  const [setorSelecionado, setSetorSelecionado] = useState<number | null>(null)
   const [claimCarregando, setClaimCarregando] = useState(false)
 
   const { fotoUrl, carregandoFoto, fecharFoto } = useFotoModal(FOTO_ENDPOINTS)
@@ -827,6 +829,16 @@ export default function Mapa() {
         <POIMarkersPublic pois={pois} />
         <UserLocation />
         <CoordDisplay />
+        {setorSelecionado && (() => {
+          const setor = SETORES.find((s) => s.id === setorSelecionado)
+          if (!setor) return null
+          return (
+            <Polygon
+              positions={setor.poligono.map(([lat, lng]) => [lat, lng] as [number, number])}
+              pathOptions={{ color: '#3b82f6', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.2 }}
+            />
+          )
+        })()}
         <FlyToHandler target={flyToTarget} />
       </MapContainer>
 
@@ -928,7 +940,7 @@ export default function Mapa() {
               <TimelineFeed denuncias={denuncias} onFlyTo={handleFlyTo} onClose={() => setPainelAberto(null)} />
             )}
             {painelAberto === 'setores' && (
-              <PainelSetores denuncias={denuncias} />
+              <PainelSetores denuncias={denuncias} setorSelecionado={setorSelecionado} onSetorClick={setSetorSelecionado} />
             )}
             {painelAberto === 'ranking' && (
               <RankingColaboradores onClose={() => setPainelAberto(null)} />

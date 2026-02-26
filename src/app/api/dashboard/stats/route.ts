@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verificarAdmin } from '@/lib/auth-dashboard'
-import { TIPO_CONFIG } from '@/types'
-import { SETORES } from '@/lib/setores'
+import { TIPO_CONFIG, Denuncia } from '@/types'
+import { SETORES, getSetorDenuncia } from '@/lib/setores'
 
 export async function GET(request: Request) {
   const authError = verificarAdmin(request)
@@ -91,13 +91,7 @@ export async function GET(request: Request) {
     const setorMap = new Map<string, number>()
     SETORES.forEach((s) => setorMap.set(s.nome, 0))
     todasDenuncias.forEach((d) => {
-      const setor = SETORES.find(
-        (s) =>
-          d.longitude >= s.lngMin &&
-          d.longitude < s.lngMax &&
-          d.latitude >= s.latMin &&
-          d.latitude < s.latMax
-      )
+      const setor = getSetorDenuncia(d as Denuncia)
       if (setor) setorMap.set(setor.nome, (setorMap.get(setor.nome) || 0) + 1)
     })
     const porSetor = Array.from(setorMap.entries()).map(([setor, total]) => ({ setor, total }))

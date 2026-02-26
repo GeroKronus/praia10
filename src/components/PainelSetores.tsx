@@ -6,6 +6,8 @@ import { calcularRanking } from '@/lib/setores'
 
 interface PainelSetoresProps {
   denuncias: Denuncia[]
+  setorSelecionado?: number | null
+  onSetorClick?: (setorId: number | null) => void
 }
 
 const STATUS_LABEL = {
@@ -14,18 +16,24 @@ const STATUS_LABEL = {
   critico: 'Crítico',
 }
 
-export default function PainelSetores({ denuncias }: PainelSetoresProps) {
+export default function PainelSetores({ denuncias, setorSelecionado, onSetorClick }: PainelSetoresProps) {
   const ranking = useMemo(() => calcularRanking(denuncias), [denuncias])
 
   return (
     <div className="bg-white rounded-xl shadow-xl w-64 overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-100">
         <h3 className="text-sm font-bold text-gray-800">Ranking da Orla</h3>
-        <p className="text-[10px] text-gray-400">Setores por numero de denuncias</p>
+        <p className="text-[10px] text-gray-400">Toque no setor para ver no mapa</p>
       </div>
       <div className="divide-y divide-gray-50">
         {ranking.map((item, i) => (
-          <div key={item.setor.id} className="flex items-center gap-3 px-4 py-2.5">
+          <div
+            key={item.setor.id}
+            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
+              setorSelecionado === item.setor.id ? 'bg-blue-50' : 'hover:bg-gray-50'
+            }`}
+            onClick={() => onSetorClick?.(setorSelecionado === item.setor.id ? null : item.setor.id)}
+          >
             <span className="text-sm font-bold text-gray-400 w-4">{i + 1}</span>
             <div
               className="w-3 h-3 rounded-full flex-shrink-0"
