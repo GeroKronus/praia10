@@ -87,7 +87,6 @@ model AvatarEspecial {
   chave     String              // "poseidon" | "sereia"
   visitorId String
   criadoEm  DateTime @default(now())
-  @@unique([chave, visitorId])
   @@map("avatares_especiais")
 }
 
