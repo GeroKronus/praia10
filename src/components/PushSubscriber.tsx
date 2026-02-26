@@ -43,9 +43,9 @@ export default function PushSubscriber() {
     }
   }, [])
 
-  // Auto-fechar após 5 segundos
+  // Auto-fechar dica de instalação iOS após 5 segundos
   useEffect(() => {
-    if (state === 'loading' || state === 'unsupported' || state === 'granted' || state === 'denied') return
+    if (state !== 'ios-needs-install') return
     const timer = setTimeout(() => setDismissed(true), 5000)
     return () => clearTimeout(timer)
   }, [state])
