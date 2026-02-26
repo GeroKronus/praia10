@@ -664,8 +664,8 @@ export default function Mapa() {
       .catch(console.error)
   }, [])
 
-  // Buscar agentes online
-  useEffect(() => {
+  // Buscar agentes online (fetch reutilizável)
+  const fetchAgentes = useCallback(() => {
     fetch('/api/agentes')
       .then((res) => res.json())
       .then((data) => {
@@ -673,6 +673,13 @@ export default function Mapa() {
       })
       .catch(console.error)
   }, [])
+
+  // Fetch inicial + polling a cada 15s (fallback se Socket.io perder eventos)
+  useEffect(() => {
+    fetchAgentes()
+    const interval = setInterval(fetchAgentes, 15000)
+    return () => clearInterval(interval)
+  }, [fetchAgentes])
 
   // Restaurar sessão do agente
   useEffect(() => {
@@ -779,15 +786,16 @@ export default function Mapa() {
       if (document.visibilityState !== 'visible') return
       const socket = getSocket()
       if (socket.disconnected) socket.connect()
-      // Re-buscar denúncias atualizadas
+      // Re-buscar dados atualizados
       fetch('/api/denuncias')
         .then((res) => res.json())
         .then((data) => { if (Array.isArray(data)) setDenuncias(data) })
         .catch(console.error)
+      fetchAgentes()
     }
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [])
+  }, [fetchAgentes])
 
   // Timer local para remover denuncias expiradas
   useEffect(() => {
