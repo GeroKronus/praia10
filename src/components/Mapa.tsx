@@ -410,6 +410,7 @@ export default function Mapa() {
   const [ultimaDenuncia, setUltimaDenuncia] = useState<Denuncia | null>(null)
   const [painelAberto, setPainelAberto] = useState<'utilidades' | 'feed' | 'setores' | 'ranking' | null>(null)
   const [isDark, setIsDark] = useState(isNightTime)
+  const [darkManual, setDarkManual] = useState(false)
   const [avatarMap, setAvatarMap] = useState<Map<string, AvatarInfo>>(new Map())
   const [avatarClaims, setAvatarClaims] = useState<AvatarClaim[]>([])
   const [mostrarClaimModal, setMostrarClaimModal] = useState(false)
@@ -421,11 +422,12 @@ export default function Mapa() {
     setPainelAberto((p) => (p === painel ? null : painel))
   }, [])
 
-  // Dark mode — re-check a cada 60s
+  // Dark mode — re-check a cada 60s (só se não for manual)
   useEffect(() => {
+    if (darkManual) return
     const interval = setInterval(() => setIsDark(isNightTime()), 60000)
     return () => clearInterval(interval)
-  }, [])
+  }, [darkManual])
 
   // Deep link — ler ?lat=X&lng=Y da URL
   useEffect(() => {
@@ -800,16 +802,24 @@ export default function Mapa() {
             </button>
           </div>
 
-          <button
-            onClick={() => setMostrarHeatmap(!mostrarHeatmap)}
-            className={`ml-auto rounded-xl shadow-lg px-2.5 py-2 text-xs font-semibold transition-colors pointer-events-auto ${
-              mostrarHeatmap
-                ? 'bg-orange-500 text-white'
-                : 'bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-white'
-            }`}
-          >
-            🔥
-          </button>
+          <div className="ml-auto flex items-center gap-1.5 pointer-events-auto">
+            <button
+              onClick={() => { setDarkManual(true); setIsDark(!isDark) }}
+              className="rounded-xl shadow-lg px-2.5 py-2 text-xs font-semibold transition-colors bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-white"
+            >
+              {isDark ? '☀️' : '🌙'}
+            </button>
+            <button
+              onClick={() => setMostrarHeatmap(!mostrarHeatmap)}
+              className={`rounded-xl shadow-lg px-2.5 py-2 text-xs font-semibold transition-colors ${
+                mostrarHeatmap
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-white'
+              }`}
+            >
+              🔥
+            </button>
+          </div>
         </div>
 
         {/* Painel aberto */}
