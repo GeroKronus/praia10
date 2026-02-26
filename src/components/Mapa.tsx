@@ -39,15 +39,18 @@ function isNightTime(): boolean {
   return h >= 18 || h < 6
 }
 
+function gerarId(): string {
+  try { return crypto.randomUUID() } catch { /* fallback */ }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
 function getSessionId(): string {
   let id = sessionStorage.getItem('praia10_session')
   if (!id) {
-    id = (typeof crypto !== 'undefined' && crypto.randomUUID)
-      ? crypto.randomUUID()
-      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-          const r = (Math.random() * 16) | 0
-          return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
-        })
+    id = gerarId()
     sessionStorage.setItem('praia10_session', id)
   }
   return id
@@ -805,7 +808,7 @@ export default function Mapa() {
     const socket = getSocket()
     const handler = (msg: { agenteId: string; texto: string; enviadoEm: string; socketId: string }) => {
       if (msg.agenteId === agenteLogado.id) {
-        setMensagensAgente((prev) => [...prev, { id: crypto.randomUUID(), texto: msg.texto, enviadoEm: msg.enviadoEm, socketId: msg.socketId }])
+        setMensagensAgente((prev) => [...prev, { id: gerarId(), texto: msg.texto, enviadoEm: msg.enviadoEm, socketId: msg.socketId }])
         if (navigator.vibrate) navigator.vibrate([100, 50, 100])
       }
     }
