@@ -15,7 +15,7 @@ export default function FotoUploadInput({
   inputRef,
   onFoto,
   onRemover,
-  label = 'Tirar foto',
+  label = 'Adicionar foto',
 }: FotoUploadInputProps) {
   return (
     <div className="w-24 flex-shrink-0">
@@ -44,7 +44,6 @@ export default function FotoUploadInput({
             ref={inputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={onFoto}
             className="hidden"
           />
